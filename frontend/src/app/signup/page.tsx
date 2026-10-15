@@ -90,34 +90,19 @@ export default function SignupPage() {
               <span className="text-6xl">🌿</span>
             </div>
 
-            <h1 className="text-4xl font-bold leading-tight tracking-tight md:text-5xl">
-              Good food.
-              <br />
-              Good roots.
-              <br />
-              Better choices.
-            </h1>
-
             <p className="mt-6 max-w-sm leading-7 text-white/75">
-              Discover fresh, plant-forward meals and connect with a community
+              Discover fresh, plant-forward meals and connect with a food network
               that cares about what goes on your plate.
             </p>
           </div>
 
-          <p className="mt-12 text-sm text-white/60">
-            Fresh ideas. Thoughtful ingredients. A greener way to eat.
-          </p>
         </div>
 
         {/* Signup form */}
         <div className="p-6 sm:p-10 md:p-12">
-          <p className="eyebrow">Join our community</p>
+          <p className="eyebrow">Join us now!</p>
 
           <h2 className="page-title mt-3">Create your account</h2>
-
-          <p className="body-text mt-3 mb-8">
-            Get started in just a few steps.
-          </p>
 
           <form onSubmit={handleSubmit} className="form-stack">
             <div className="form-field">

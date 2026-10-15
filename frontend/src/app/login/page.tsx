@@ -90,14 +90,10 @@ export default function LoginPage() {
             </h1>
 
             <p className="mt-6 max-w-sm leading-7 text-white/75">
-              Your next favourite meal is waiting. Sign in to continue your
-              journey toward fresher, more thoughtful food.
+              Your next favourite meal is waiting!
             </p>
           </div>
 
-          <p className="mt-12 text-sm text-white/60">
-            Fresh ideas. Thoughtful ingredients. A greener way to eat.
-          </p>
         </div>
 
         <div className="p-6 sm:p-10 md:p-12">
