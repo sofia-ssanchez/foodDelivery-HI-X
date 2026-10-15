@@ -1,0 +1,168 @@
+
+"use client";
+
+import { useState } from "react";
+import type { FormEventHandler } from "react";
+
+export default function LoginPage() {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [message, setMessage] = useState("");
+  const [isError, setIsError] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit: FormEventHandler<HTMLFormElement> = async (event) => {
+    event.preventDefault();
+
+    setMessage("");
+    setIsError(false);
+    setIsLoading(true);
+
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:8000/api/accounts/login/",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ username, password }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          "Invalid username or password. Please try again."
+        );
+      }
+
+      // Temporary: confirm that the login API accepted the credentials.
+      // We'll add secure token handling and navigation next.
+      setMessage("Login successful! Welcome back.");
+      setUsername("");
+      setPassword("");
+
+      // Do not display or log the access or refresh tokens.
+    } catch (error) {
+      setIsError(true);
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong. Please try again."
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <main className="page-container botanical-background">
+      <section className="botanical-card page-content grid grid-cols-1 md:grid-cols-2">
+        {/* Branding panel */}
+        <div className="brand-panel flex flex-col justify-between p-8 md:p-12">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] brand-accent">
+              Five Leaf Clover
+            </p>
+
+            <div className="my-12" aria-hidden="true">
+              <span className="text-6xl">🌿</span>
+            </div>
+
+            <h1 className="text-4xl font-bold leading-tight tracking-tight md:text-5xl">
+              Welcome
+              <br />
+              back.
+            </h1>
+
+            <p className="mt-6 max-w-sm leading-7 text-white/75">
+              Your next favourite meal is waiting. Sign in to continue your
+              journey toward fresher, more thoughtful food.
+            </p>
+          </div>
+
+          <p className="mt-12 text-sm text-white/60">
+            Fresh ideas. Thoughtful ingredients. A greener way to eat.
+          </p>
+        </div>
+
+        {/* Login form */}
+        <div className="p-6 sm:p-10 md:p-12">
+          <p className="eyebrow">It's good to see you</p>
+
+          <h2 className="page-title mt-3">Log in</h2>
+
+          <p className="body-text mt-3 mb-8">
+            Enter your account details below.
+          </p>
+
+          <form onSubmit={handleSubmit} className="form-stack">
+            <div className="form-field">
+              <label className="form-label" htmlFor="username">
+                Username
+              </label>
+
+              <input
+                className="form-input"
+                id="username"
+                name="username"
+                type="text"
+                autoComplete="username"
+                placeholder="Your username"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                required
+              />
+            </div>
+
+            <div className="form-field">
+              <label className="form-label" htmlFor="password">
+                Password
+              </label>
+
+              <input
+                className="form-input"
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                placeholder="Your password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+              />
+            </div>
+
+            {message && (
+              <div
+                className={`message ${
+                  isError ? "message-error" : "message-success"
+                }`}
+                role="status"
+              >
+                {message}
+              </div>
+            )}
+
+            <button
+              className="btn btn-primary btn-full"
+              type="submit"
+              disabled={isLoading}
+            >
+              {isLoading ? "Logging in..." : "Log in"}
+            </button>
+          </form>
+
+          <p className="body-text mt-6 text-center">
+            Don't have an account?{" "}
+            <a href="/signup" className="font-semibold">
+              Sign up
+            </a>
+          </p>
+        </div>
+      </section>
+    </main>
+  );
+}
