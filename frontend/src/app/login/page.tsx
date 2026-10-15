@@ -3,8 +3,11 @@
 
 import { useState } from "react";
 import type { FormEventHandler } from "react";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
+  const router = useRouter();
+
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
@@ -20,9 +23,10 @@ export default function LoginPage() {
 
     try {
       const response = await fetch(
-        "http://127.0.0.1:8000/api/accounts/login/",
+        "http://localhost:8000/api/accounts/login/",
         {
           method: "POST",
+          credentials: "include",
           headers: {
             "Content-Type": "application/json",
           },
@@ -31,6 +35,7 @@ export default function LoginPage() {
       );
 
       const data = await response.json();
+      console.log("Login response:", data);
 
       if (!response.ok) {
         throw new Error(
@@ -38,13 +43,21 @@ export default function LoginPage() {
         );
       }
 
-      // Temporary: confirm that the login API accepted the credentials.
-      // We'll add secure token handling and navigation next.
-      setMessage("Login successful! Welcome back.");
-      setUsername("");
-      setPassword("");
+      const destinations: Record<string, string> = {
+        customer: "/dashboard/customer",
+        restaurant: "/dashboard/restaurant",
+        courier: "/dashboard/courier",
+        operator: "/dashboard/operator",
+      };
 
-      // Do not display or log the access or refresh tokens.
+      const destination = destinations[data.role];
+
+      if (!destination) {
+        throw new Error("Your account has an unrecognized role.");
+      }
+
+      // Navigate only after Django confirms successful login.
+      router.replace(destination);
     } catch (error) {
       setIsError(true);
       setMessage(
@@ -60,11 +73,10 @@ export default function LoginPage() {
   return (
     <main className="page-container botanical-background">
       <section className="botanical-card page-content grid grid-cols-1 md:grid-cols-2">
-        {/* Branding panel */}
         <div className="brand-panel flex flex-col justify-between p-8 md:p-12">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.2em] brand-accent">
-              Five Leaf Clover
+              Root &amp; Sprout
             </p>
 
             <div className="my-12" aria-hidden="true">
@@ -88,7 +100,6 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Login form */}
         <div className="p-6 sm:p-10 md:p-12">
           <p className="eyebrow">It's good to see you</p>
 
