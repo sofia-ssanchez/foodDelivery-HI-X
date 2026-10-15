@@ -76,7 +76,7 @@ export default function LoginPage() {
         <div className="brand-panel flex flex-col justify-between p-8 md:p-12">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.2em] brand-accent">
-              Root &amp; Sprout
+              Five Leaf Clover
             </p>
 
             <div className="my-12" aria-hidden="true">
