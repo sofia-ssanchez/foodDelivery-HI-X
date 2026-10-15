@@ -40,6 +40,7 @@ INSTALLED_APPS = [
 
     "rest_framework",
     "corsheaders",
+    'accounts',
 ]
 
 MIDDLEWARE = [
@@ -101,6 +102,9 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
+
+#Auth user model
+AUTH_USER_MODEL = 'accounts.User'
 
 
 # Internationalization
