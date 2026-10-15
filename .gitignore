@@ -5,6 +5,7 @@ backend/__pycache__/
 
 # Django
 backend/db.sqlite3
+backend/db_copy.sqlite3
 
 # Next.js
 frontend/node_modules/
