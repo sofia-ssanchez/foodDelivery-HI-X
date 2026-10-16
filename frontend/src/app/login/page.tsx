@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import type { FormEventHandler } from "react";
+import type { ComponentProps } from "react";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
@@ -14,7 +14,7 @@ export default function LoginPage() {
   const [isError, setIsError] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit: FormEventHandler<HTMLFormElement> = async (event) => {
+  const handleSubmit: NonNullable<ComponentProps<"form">["onSubmit"]> = async (event) => {
     event.preventDefault();
 
     setMessage("");
@@ -75,22 +75,16 @@ export default function LoginPage() {
       <section className="botanical-card page-content grid grid-cols-1 md:grid-cols-2">
         <div className="brand-panel flex flex-col justify-between p-8 md:p-12">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] brand-accent">
+            <p className="text-4xl font-semibold uppercase tracking-[0.2em] brand-accent">
               Five Leaf Clover
             </p>
 
-            <div className="my-12" aria-hidden="true">
-              <span className="text-6xl">🌿</span>
-            </div>
-
-            <h1 className="text-4xl font-bold leading-tight tracking-tight md:text-5xl">
-              Welcome
-              <br />
-              back.
+            <h1 className="text-4xl font-bold leading-tight tracking-tight md:text-2xl">
+              Welcome back!
             </h1>
 
             <p className="mt-6 max-w-sm leading-7 text-white/75">
-              Your next favourite meal is waiting!
+              Vegan food delivery made simple!
             </p>
           </div>
 

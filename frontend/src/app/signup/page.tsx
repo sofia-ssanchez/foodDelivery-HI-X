@@ -1,8 +1,7 @@
-
 "use client";
 
 import { useState } from "react";
-import type { FormEventHandler } from "react";
+import type { ComponentProps } from "react";
 
 export default function SignupPage() {
   const [username, setUsername] = useState("");
@@ -13,7 +12,7 @@ export default function SignupPage() {
   const [isError, setIsError] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit: FormEventHandler<HTMLFormElement> = async (event) => {
+  const handleSubmit: NonNullable<ComponentProps<"form">["onSubmit"]> = async (event) => {
     event.preventDefault();
 
     setMessage("");
@@ -82,17 +81,12 @@ export default function SignupPage() {
         {/* Left branding panel */}
         <div className="brand-panel flex flex-col justify-between p-8 md:p-12">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] brand-accent">
+            <p className="text-4xl font-semibold uppercase tracking-[0.2em] brand-accent">
               Five Leaf Clover
             </p>
-
-            <div className="my-12" aria-hidden="true">
-              <span className="text-6xl">🌿</span>
-            </div>
-
-            <p className="mt-6 max-w-sm leading-7 text-white/75">
-              Discover fresh, plant-forward meals and connect with a food network
-              that cares about what goes on your plate.
+            <br/>
+            <p className="text-4xl font-bold leading-tight tracking-tight md:text-xl">
+              Discover fresh plant-based meals from local restaurants around you!
             </p>
           </div>
 
@@ -100,7 +94,7 @@ export default function SignupPage() {
 
         {/* Signup form */}
         <div className="p-6 sm:p-10 md:p-12">
-          <p className="eyebrow">Join us now!</p>
+          <p className="eyebrow">Join now!</p>
 
           <h2 className="page-title mt-3">Create your account</h2>
 
@@ -152,14 +146,12 @@ export default function SignupPage() {
                 name="password"
                 type="password"
                 autoComplete="new-password"
-                placeholder="At least 8 characters"
-                minLength={8}
+                placeholder="At least 6 characters"
+                minLength={6}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 required
               />
-
-              <p className="form-help">Use at least 8 characters.</p>
             </div>
 
             <div className="form-field">

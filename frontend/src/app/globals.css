@@ -2,30 +2,42 @@
 @import "tailwindcss";
 
 /* ========================================
-   1. ROOT & SPROUT — DESIGN TOKENS
+   1. COLOR PALETTE & DESIGN TOKENS
    ======================================== */
 
 :root {
-  --color-forest: #234d36;
-  --color-forest-dark: #183b28;
-  --color-leaf: #315d3d;
-  --color-sage: #a9c5a0;
-  --color-sage-light: #dce8d4;
-  --color-cream: #f7f5e9;
-  --color-surface: #ffffff;
-  --color-text: #344d38;
-  --color-muted: #788476;
-  --color-border: #d8e2d2;
-  --color-input: #fcfdf9;
-  --color-success-bg: #f0f6eb;
-  --color-success-text: #315d3d;
-  --color-error-bg: #fff8f1;
-  --color-error-text: #8c4b30;
+  /* Brand greens */
+  --color-forest: #285638;
+  --color-forest-dark: #1C4029;
+  --color-leaf: #43834A;
+  --color-sage: #B9D987;
+  --color-sage-light: #E5EED4;
 
+  /* Warm neutrals */
+  --color-cream: #F8F1DE;
+  --color-surface: #FFFEF9;
+  --color-text: #354B35;
+  --color-muted: #777C65;
+  --color-border: #E2DDC5;
+  --color-input: #FFFDF6;
+
+  /* Feedback messages */
+  --color-success-bg: #EEF5E3;
+  --color-success-text: #315E36;
+  --color-error-bg: #FFF0E5;
+  --color-error-text: #934B32;
+
+  /* Additional brand accents */
+  --color-honey: #E7D5A5;
+  --color-honey-dark: #80652F;
+  --color-fresh: #A8C96D;
+
+  /* Shape and depth */
   --radius-card: 2rem;
   --radius-control: 0.75rem;
 
-  --shadow-card: 0 24px 80px rgba(35, 77, 54, 0.13);
+  --shadow-card:
+    0 24px 80px rgba(40, 86, 56, 0.14);
 }
 
 /* ========================================
@@ -85,6 +97,7 @@ a:hover {
   justify-content: center;
   position: relative;
   overflow: hidden;
+
   background: var(--color-cream);
 }
 
@@ -106,10 +119,11 @@ a:hover {
   max-width: 28rem;
   padding: 2rem;
   box-sizing: border-box;
+
   background: var(--color-surface);
-  border: 1px solid rgba(216, 226, 210, 0.7);
+  border: 1px solid rgba(226, 221, 197, 0.8);
   border-radius: 1.5rem;
-  box-shadow: 0 12px 40px rgba(35, 77, 54, 0.08);
+  box-shadow: 0 12px 40px rgba(40, 86, 56, 0.09);
 }
 
 /* ========================================
@@ -140,7 +154,7 @@ a:hover {
 }
 
 .eyebrow {
-  color: #66845c;
+  color: #66834B;
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.18em;
@@ -175,26 +189,31 @@ a:hover {
   width: 100%;
   box-sizing: border-box;
   padding: 0.8rem 1rem;
+
   border: 1px solid var(--color-border);
   border-radius: var(--radius-control);
+
   background: var(--color-input);
   color: var(--color-forest);
   outline: none;
+
   transition:
     border-color 160ms ease,
-    box-shadow 160ms ease;
+    box-shadow 160ms ease,
+    background 160ms ease;
 }
 
 .form-input::placeholder,
 .form-textarea::placeholder {
-  color: #9baa98;
+  color: #92977E;
 }
 
 .form-input:focus,
 .form-select:focus,
 .form-textarea:focus {
-  border-color: #477653;
-  box-shadow: 0 0 0 4px rgba(71, 118, 83, 0.1);
+  border-color: var(--color-leaf);
+  background: #FFFFFF;
+  box-shadow: 0 0 0 4px rgba(67, 131, 74, 0.13);
 }
 
 .form-help {
@@ -214,15 +233,20 @@ a:hover {
   justify-content: center;
   gap: 0.5rem;
   padding: 0.85rem 1.25rem;
+
   border: 1px solid transparent;
   border-radius: var(--radius-control);
+
   font-size: 0.95rem;
   font-weight: 650;
   text-align: center;
+
   transition:
     background 160ms ease,
     border-color 160ms ease,
-    transform 160ms ease;
+    color 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .btn:active:not(:disabled) {
@@ -231,24 +255,25 @@ a:hover {
 
 .btn-primary {
   background: var(--color-leaf);
-  color: white;
-  box-shadow: 0 5px 14px rgba(35, 77, 54, 0.1);
+  color: #FFFFFF;
+  box-shadow: 0 5px 14px rgba(40, 86, 56, 0.16);
 }
 
 .btn-primary:hover:not(:disabled) {
   background: var(--color-forest);
-  color: white;
+  color: #FFFFFF;
+  box-shadow: 0 7px 18px rgba(40, 86, 56, 0.2);
 }
 
 .btn-secondary {
   border-color: var(--color-border);
-  background: white;
+  background: var(--color-surface);
   color: var(--color-forest);
 }
 
 .btn-secondary:hover:not(:disabled) {
   border-color: var(--color-sage);
-  background: #f5f8f1;
+  background: var(--color-sage-light);
 }
 
 .btn-full {
@@ -268,32 +293,32 @@ a:hover {
 }
 
 .message-success {
-  border-color: #c7d9b9;
+  border-color: #C9DDB2;
   background: var(--color-success-bg);
   color: var(--color-success-text);
 }
 
 .message-error {
-  border-color: #e8d7c8;
+  border-color: #EBCDB8;
   background: var(--color-error-bg);
   color: var(--color-error-text);
 }
 
 /* ========================================
-   8. BOTANICAL DECORATION
+   8. BOTANICAL BACKGROUND & BRANDING
    ======================================== */
 
 .botanical-background {
   background:
     radial-gradient(
       circle at 0% 0%,
-      rgba(220, 232, 212, 0.8),
-      transparent 35%
+      rgba(229, 238, 212, 0.95),
+      transparent 38%
     ),
     radial-gradient(
       circle at 100% 100%,
-      rgba(199, 217, 185, 0.65),
-      transparent 38%
+      rgba(231, 213, 165, 0.5),
+      transparent 40%
     ),
     var(--color-cream);
 }
@@ -302,11 +327,46 @@ a:hover {
   position: relative;
   overflow: hidden;
   background: var(--color-forest);
-  color: white;
+  color: #FFFFFF;
 }
 
 .brand-accent {
-  color: var(--color-sage);
+  color: #C9E69A;
+}
+
+/* Optional decorative glow for branding panels */
+
+.brand-panel::before {
+  content: "";
+  position: absolute;
+  width: 18rem;
+  height: 18rem;
+  right: -7rem;
+  bottom: -7rem;
+
+  border-radius: 50%;
+  background: rgba(185, 217, 135, 0.09);
+  pointer-events: none;
+}
+
+.brand-panel::after {
+  content: "";
+  position: absolute;
+  width: 12rem;
+  height: 12rem;
+  right: -5rem;
+  top: -5rem;
+
+  border-radius: 50%;
+  border: 1px solid rgba(185, 217, 135, 0.14);
+  pointer-events: none;
+}
+
+/* Keep branding content above decorative shapes */
+
+.brand-panel > * {
+  position: relative;
+  z-index: 1;
 }
 
 /* ========================================
