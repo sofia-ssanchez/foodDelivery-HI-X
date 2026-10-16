@@ -47,7 +47,7 @@ export default function SignupPage() {
                 ? JSON.stringify(error)
                 : String(error);
 
-            return `${field}: ${details}`;
+            return `${details}`;
           })
           .join(" ");
 
@@ -170,7 +170,6 @@ export default function SignupPage() {
                 <option value="customer">Customer</option>
                 <option value="restaurant">Restaurant</option>
                 <option value="courier">Courier</option>
-                <option value="operator">Operator</option>
               </select>
             </div>
 
