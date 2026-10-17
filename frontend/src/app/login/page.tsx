@@ -91,7 +91,7 @@ export default function LoginPage() {
         </div>
 
         <div className="p-6 sm:p-10 md:p-12">
-          <p className="eyebrow">It&apos;s good to see you</p>
+          <p className="eyebrow">It's good to see you</p>
 
           <h2 className="page-title mt-3">Log in</h2>
 
@@ -157,7 +157,7 @@ export default function LoginPage() {
           </form>
 
           <p className="body-text mt-6 text-center">
-            Don&apos;t have an account?{" "}
+            Don't have an account?{" "}
             <a href="/signup" className="font-semibold">
               Sign up
             </a>
