@@ -47,7 +47,7 @@ export default function SignupPage() {
                 ? JSON.stringify(error)
                 : String(error);
 
-            return `${field}: ${details}`;
+            return `${details}`;
           })
           .join(" ");
 
@@ -146,8 +146,8 @@ export default function SignupPage() {
                 name="password"
                 type="password"
                 autoComplete="new-password"
-                placeholder="At least 6 characters"
-                minLength={6}
+                placeholder="At least 8 characters"
+                minLength={8}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 required
@@ -170,7 +170,6 @@ export default function SignupPage() {
                 <option value="customer">Customer</option>
                 <option value="restaurant">Restaurant</option>
                 <option value="courier">Courier</option>
-                <option value="operator">Operator</option>
               </select>
             </div>
 
