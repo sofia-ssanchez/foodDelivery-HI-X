@@ -24,3 +24,22 @@ class MenuItemSerializer(serializers.ModelSerializer):
             "status",
         ]
         read_only_fields = fields
+
+class OrderItemInputSerializer(serializers.Serializer):
+    menu_item_id = serializers.IntegerField(min_value=1)
+    quantity = serializers.IntegerField(min_value=1)
+
+
+class PlaceOrderSerializer(serializers.Serializer):
+    restaurant_id = serializers.IntegerField(min_value=1)
+    items = OrderItemInputSerializer(many=True, allow_empty=False)
+
+    def validate_items(self, items):
+        item_ids = [item["menu_item_id"] for item in items]
+
+        if len(item_ids) != len(set(item_ids)):
+            raise serializers.ValidationError(
+                "Duplicate menu items are not allowed."
+            )
+
+        return items
