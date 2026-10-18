@@ -12,7 +12,6 @@ class PlaceOrderCommand:
 
     @transaction.atomic
     def execute(self):
-        # Check restaurant exists and accepts new orders.
         try:
             restaurant = Restaurant.objects.get(id=self.restaurant_id)
         except Restaurant.DoesNotExist:
@@ -21,7 +20,6 @@ class PlaceOrderCommand:
         if restaurant.status != Restaurant.Status.OPEN:
             raise ValidationError("Restaurant is not open for orders.")
 
-        # Validate all requested menu items before creating an order.
         order_lines = []
 
         for item in self.items:
@@ -48,7 +46,6 @@ class PlaceOrderCommand:
                 }
             )
 
-        # Create the order only after all items pass validation.
         order = Order.objects.create(
             customer=self.customer,
             restaurant=restaurant,

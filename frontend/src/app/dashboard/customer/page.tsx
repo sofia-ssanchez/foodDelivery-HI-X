@@ -24,7 +24,6 @@ type OrderResponse = {
   message?: string;
 };
 
-// We will confirm these with Kailee once her backend is pushed.
 const API_BASE = "http://localhost:8000";
 
 const RESTAURANTS_ENDPOINT = `${API_BASE}/api/restaurants/`;
@@ -53,7 +52,7 @@ export default function CustomerDashboard() {
   const [orderMessage, setOrderMessage] = useState("");
   const [orderStatus, setOrderStatus] = useState("");
 
-  // Load restaurants when the customer dashboard opens.
+
   useEffect(() => {
     const loadRestaurants = async () => {
       setLoadingRestaurants(true);
@@ -86,7 +85,7 @@ export default function CustomerDashboard() {
     loadRestaurants();
   }, []);
 
-  // Load the menu for the restaurant the customer selects.
+
   const selectRestaurant = async (restaurant: Restaurant) => {
     setSelectedRestaurant(restaurant);
 
