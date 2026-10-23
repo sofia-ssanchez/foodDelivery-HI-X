@@ -29,7 +29,18 @@ export async function apiFetch(url: string, init: RequestInit = {}): Promise<Res
     throw new Error("Authenticated requests must use the API origin.");
   }
   const generation = refreshGeneration;
-  const send = () => fetch(target, { ...init, credentials: "include" });
+  const send = () => {
+    const headers = new Headers(init.headers);
+    const method = (init.method ?? "GET").toUpperCase();
+    if (!["GET", "HEAD", "OPTIONS", "TRACE"].includes(method) && typeof document !== "undefined") {
+      const cookie = document.cookie.split(";").map((part) => part.trim())
+        .find((part) => part.startsWith("csrftoken="));
+      if (cookie) {
+        headers.set("X-CSRFToken", decodeURIComponent(cookie.slice("csrftoken=".length)));
+      }
+    }
+    return fetch(target, { ...init, headers, credentials: "include" });
+  };
 
   let response = await send();
   if (response.status === 401) {
