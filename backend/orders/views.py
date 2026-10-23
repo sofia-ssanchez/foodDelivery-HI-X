@@ -1,8 +1,5 @@
 from rest_framework import generics
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.exceptions import PermissionDenied
-from rest_framework.response import Response
-from rest_framework import status
+from guards.permissions import RequireAuth
 from .models import MenuItem, Restaurant
 from .commands import PlaceOrderCommand
 from .serializers import MenuItemSerializer, PlaceOrderSerializer, RestaurantSerializer
@@ -10,12 +7,12 @@ from .serializers import MenuItemSerializer, PlaceOrderSerializer, RestaurantSer
 class RestaurantListView(generics.ListAPIView):
     queryset = Restaurant.objects.all()
     serializer_class = RestaurantSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [RequireAuth]
 
 
 class RestaurantMenuView(generics.ListAPIView):
     serializer_class = MenuItemSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [RequireAuth]
 
     def get_queryset(self):
         return MenuItem.objects.filter(
