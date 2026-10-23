@@ -107,6 +107,15 @@ AUTH_PASSWORD_VALIDATORS = [
 #Auth user model
 AUTH_USER_MODEL = 'accounts.User'
 
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "guards.authentication.CookieJWTAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "guards.permissions.RequireAuth",
+    ],
+}
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/6.1/topics/i18n/
