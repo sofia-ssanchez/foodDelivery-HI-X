@@ -1,10 +1,12 @@
 from rest_framework import generics, status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
-from guards.permissions import RequireAuth
-from .models import MenuItem, Restaurant
+from django.shortcuts import get_object_or_404
+from guards.permissions import RequireAuth, RequireRestaurantUser
+from .models import MenuItem, Restaurant, Order
 from .commands import PlaceOrderCommand
-from .serializers import MenuItemSerializer, PlaceOrderSerializer, RestaurantSerializer
+from .serializers import (MenuItemSerializer, PlaceOrderSerializer, RestaurantSerializer,
+                          RestaurantOrderSerializer, OrderStatusSerializer)
 
 class RestaurantListView(generics.ListAPIView):
     queryset = Restaurant.objects.all()
@@ -48,3 +50,43 @@ class PlaceOrderView(generics.CreateAPIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+class RestaurantOrderBoardView(generics.GenericAPIView):
+    permission_classes = [RequireRestaurantUser]
+    serializer_class = RestaurantOrderSerializer
+
+    def get(self, request):
+        restaurants = Restaurant.objects.filter(owner=request.user).order_by("name", "id")
+        orders = Order.objects.filter(restaurant__owner=request.user).select_related(
+            "customer", "restaurant"
+        ).prefetch_related("lines__menu_item").order_by("created_at", "id")
+        return Response({
+            "restaurants": RestaurantSerializer(restaurants, many=True).data,
+            "orders": self.get_serializer(orders, many=True).data,
+        })
+
+
+class RestaurantOrderStatusView(generics.GenericAPIView):
+    permission_classes = [RequireRestaurantUser]
+    serializer_class = OrderStatusSerializer
+
+    def patch(self, request, pk):
+        order = get_object_or_404(Order, pk=pk, restaurant__owner=request.user)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        expected = serializer.validated_data["expected_status"]
+        target = serializer.validated_data["status"]
+        next_states = {
+            Order.Status.PLACED: Order.Status.ACCEPTED,
+            Order.Status.ACCEPTED: Order.Status.PREPARING,
+            Order.Status.PREPARING: Order.Status.READY,
+        }
+        if next_states.get(expected) != target:
+            return Response({"detail": "Orders must move to the next preparation stage."}, status=400)
+        # Atomic compare-and-update protects against stale tabs and duplicate clicks.
+        updated = Order.objects.filter(pk=order.pk, restaurant__owner=request.user, status=expected).update(status=target)
+        if not updated:
+            return Response({"detail": "This order has changed. Refresh the board and try again."}, status=409)
+        order.refresh_from_db()
+        return Response(RestaurantOrderSerializer(order).data)
