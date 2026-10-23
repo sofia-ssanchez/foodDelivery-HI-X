@@ -1,8 +1,11 @@
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework.exceptions import AuthenticationFailed
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView as BaseTokenRefreshView
 
 from .serializers import (
     SignupSerializer,
@@ -13,6 +16,33 @@ from .serializers import (
 class SignupView(generics.CreateAPIView):
     serializer_class = SignupSerializer
     permission_classes = [AllowAny]
+
+
+class TokenRefreshView(BaseTokenRefreshView):
+    def post(self, request, *args, **kwargs):
+        refresh = request.COOKIES.get("refresh_token")
+        if not refresh:
+            raise InvalidToken("Please log in again.")
+
+        serializer = self.get_serializer(data={"refresh": refresh})
+        try:
+            serializer.is_valid(raise_exception=True)
+        except (TokenError, AuthenticationFailed, get_user_model().DoesNotExist) as exc:
+            raise InvalidToken("Your session has expired. Please log in again.") from exc
+
+        response = Response({"message": "Access token refreshed."})
+        response["Cache-Control"] = "no-store"
+        for token_type in ("access", "refresh"):
+            if token_type in serializer.validated_data:
+                response.set_cookie(
+                    key=f"{token_type}_token",
+                    value=str(serializer.validated_data[token_type]),
+                    httponly=True,
+                    secure=not settings.DEBUG,
+                    samesite="Lax",
+                    path="/",
+                )
+        return response
 
 
 class LoginView(TokenObtainPairView):
