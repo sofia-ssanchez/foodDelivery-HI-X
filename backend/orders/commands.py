@@ -56,3 +56,6 @@ class PlaceOrderCommand:
             OrderLine.objects.create(order=order, **line)
 
         return order
+
+
+class UpdateOrderStatusCommand:
