@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { API_BASE, apiFetch } from "@/lib/api";
 
 type Restaurant = {
   id: number;
@@ -23,8 +24,6 @@ type OrderResponse = {
   status?: string;
   message?: string;
 };
-
-const API_BASE = "http://localhost:8000";
 
 const RESTAURANTS_ENDPOINT = `${API_BASE}/api/restaurants/`;
 
@@ -59,7 +58,7 @@ export default function CustomerDashboard() {
       setRestaurantError("");
 
       try {
-        const response = await fetch(RESTAURANTS_ENDPOINT, {
+        const response = await apiFetch(RESTAURANTS_ENDPOINT, {
           method: "GET",
           credentials: "include",
         });
@@ -100,7 +99,7 @@ export default function CustomerDashboard() {
     setLoadingMenu(true);
 
     try {
-      const response = await fetch(menuEndpoint(restaurant.id), {
+      const response = await apiFetch(menuEndpoint(restaurant.id), {
         method: "GET",
         credentials: "include",
       });
@@ -221,7 +220,7 @@ export default function CustomerDashboard() {
         })),
       };
 
-      const response = await fetch(ORDERS_ENDPOINT, {
+      const response = await apiFetch(ORDERS_ENDPOINT, {
         method: "POST",
 
         credentials: "include",
