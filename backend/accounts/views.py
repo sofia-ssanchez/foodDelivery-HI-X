@@ -29,7 +29,7 @@ class LoginView(TokenObtainPairView):
             {
                 "message": "Login successful.",
                 "username": user.username,
-                "role": user.role,
+                "role": user.role
             },
             status=status.HTTP_200_OK,
         )
