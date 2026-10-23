@@ -21,7 +21,7 @@ class RestaurantMenuView(generics.ListAPIView):
 
 class PlaceOrderView(generics.CreateAPIView):
     serializer_class = PlaceOrderSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [RequireAuth]
 
     def create(self, request, *args, **kwargs):
         if request.user.role != request.user.Role.CUSTOMER:
