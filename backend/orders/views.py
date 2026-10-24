@@ -77,15 +77,14 @@ class RestaurantOrderStatusView(generics.GenericAPIView):
         serializer.is_valid(raise_exception=True)
         expected = serializer.validated_data["expected_status"]
         target = serializer.validated_data["status"]
-        next_states = {
-            Order.Status.PLACED: Order.Status.ACCEPTED,
-            Order.Status.ACCEPTED: Order.Status.PREPARING,
-            Order.Status.PREPARING: Order.Status.READY,
-        }
-        if next_states.get(expected) != target:
-            return Response({"detail": "Orders must move to the next preparation stage."}, status=400)
+        if order.status != expected:
+            return Response({"detail": "This order has changed. Refresh the board and try again."}, status=409)
+        try:
+            order.transition(target)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=400)
         # Atomic compare-and-update protects against stale tabs and duplicate clicks.
-        updated = Order.objects.filter(pk=order.pk, restaurant__owner=request.user, status=expected).update(status=target)
+        updated = Order.objects.filter(pk=order.pk, restaurant__owner=request.user, status=expected).update(status=order.status)
         if not updated:
             return Response({"detail": "This order has changed. Refresh the board and try again."}, status=409)
         order.refresh_from_db()
