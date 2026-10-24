@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from .commands import RESTAURANT_ORDER_COMMANDS
 from decimal import Decimal
 from .models import MenuItem, Restaurant, Order, OrderLine
 
@@ -69,5 +70,5 @@ class RestaurantOrderSerializer(serializers.ModelSerializer):
 
 
 class OrderStatusSerializer(serializers.Serializer):
-    status = serializers.ChoiceField(choices=["accepted", "preparing", "ready"])
+    status = serializers.ChoiceField(choices=list(RESTAURANT_ORDER_COMMANDS))
     expected_status = serializers.ChoiceField(choices=["placed", "accepted", "preparing", "ready", "cancelled", "rejected"])
