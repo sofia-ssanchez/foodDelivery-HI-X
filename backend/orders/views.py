@@ -1,11 +1,9 @@
 from rest_framework import generics, status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
-from django.shortcuts import get_object_or_404
-from django.db.models import Subquery
 from guards.permissions import RequireAuth, RequireRestaurantUser
 from .models import MenuItem, Restaurant, Order
-from .commands import PlaceOrderCommand
+from .commands import PlaceOrderCommand, RESTAURANT_ORDER_COMMANDS
 from .serializers import (MenuItemSerializer, PlaceOrderSerializer, RestaurantSerializer,
                           RestaurantOrderSerializer, OrderStatusSerializer)
 
@@ -73,29 +71,13 @@ class RestaurantOrderStatusView(generics.GenericAPIView):
     serializer_class = OrderStatusSerializer
 
     def patch(self, request, pk):
-        order = get_object_or_404(Order, pk=pk, restaurant__owner=request.user)
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        expected = serializer.validated_data["expected_status"]
-        target = serializer.validated_data["status"]
-        if order.status != expected:
-            return Response({"detail": "This order has changed. Refresh the board and try again."}, status=409)
-        try:
-            order.transition(target)
-        except ValueError as exc:
-            return Response({"detail": str(exc)}, status=400)
-        # Atomic compare-and-update protects against stale tabs and duplicate clicks.
-        eligible_orders = Order.objects.filter(pk=order.pk, restaurant__owner=request.user, status=expected)
-        if target == Order.Status.PREPARING:
-            # Check the queue head in the UPDATE itself, not in a separate read.
-            queue_head = Order.objects.filter(
-                restaurant_id=order.restaurant_id, status=Order.Status.ACCEPTED,
-            ).order_by("created_at", "id").values("pk")[:1]
-            eligible_orders = eligible_orders.filter(pk=Subquery(queue_head))
-        updated = eligible_orders.update(status=order.status)
-        if not updated:
-            if target == Order.Status.PREPARING:
-                return Response({"detail": "Only the oldest accepted order can start preparing. Refresh the board and prepare the first order in the queue."}, status=409)
-            return Response({"detail": "This order has changed. Refresh the board and try again."}, status=409)
-        order.refresh_from_db()
+        command_class = RESTAURANT_ORDER_COMMANDS[serializer.validated_data["status"]]
+        command = command_class(
+            actor=request.user,
+            order_id=pk,
+            expected_status=serializer.validated_data["expected_status"],
+        )
+        order = command.execute()
         return Response(RestaurantOrderSerializer(order).data)
