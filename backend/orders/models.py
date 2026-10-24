@@ -2,6 +2,7 @@ from os import name
 from sys import modules
 from django.conf import settings
 from django.db import models
+from .states import get_order_state
 
 class Restaurant(models.Model) :
 
@@ -74,6 +75,16 @@ class MenuItem(models.Model) :
         return self.name
 
 class Order(models.Model) :
+
+    @property
+    def state(self):
+        return get_order_state(self.status)
+
+    def transition(self, target_status):
+        """Delegate to the current state; the caller persists the new status."""
+        next_state = self.state.transition(target_status)
+        self.status = next_state.status
+        return next_state
 
     class Status(models.TextChoices):
         PLACED = 'placed', 'Placed'

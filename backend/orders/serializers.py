@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import MenuItem, Restaurant
+from decimal import Decimal
+from .models import MenuItem, Restaurant, Order, OrderLine
 
 class RestaurantSerializer(serializers.ModelSerializer):
     class Meta:
@@ -43,3 +44,30 @@ class PlaceOrderSerializer(serializers.Serializer):
             )
 
         return items
+
+
+class RestaurantOrderLineSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(source="menu_item.name", read_only=True)
+
+    class Meta:
+        model = OrderLine
+        fields = ["id", "name", "quantity", "unit_price"]
+
+
+class RestaurantOrderSerializer(serializers.ModelSerializer):
+    customer_name = serializers.CharField(source="customer.username", read_only=True)
+    restaurant_name = serializers.CharField(source="restaurant.name", read_only=True)
+    lines = RestaurantOrderLineSerializer(many=True, read_only=True)
+    total = serializers.SerializerMethodField()
+
+    def get_total(self, order):
+        return str(sum((line.unit_price * line.quantity for line in order.lines.all()), Decimal("0.00")))
+
+    class Meta:
+        model = Order
+        fields = ["id", "restaurant_id", "restaurant_name", "customer_name", "status", "created_at", "lines", "total"]
+
+
+class OrderStatusSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(choices=["accepted", "preparing", "ready"])
+    expected_status = serializers.ChoiceField(choices=["placed", "accepted", "preparing", "ready", "cancelled", "rejected"])
