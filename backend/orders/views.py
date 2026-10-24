@@ -2,6 +2,7 @@ from rest_framework import generics, status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
+from django.db.models import Subquery
 from guards.permissions import RequireAuth, RequireRestaurantUser
 from .models import MenuItem, Restaurant, Order
 from .commands import PlaceOrderCommand
@@ -84,8 +85,17 @@ class RestaurantOrderStatusView(generics.GenericAPIView):
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=400)
         # Atomic compare-and-update protects against stale tabs and duplicate clicks.
-        updated = Order.objects.filter(pk=order.pk, restaurant__owner=request.user, status=expected).update(status=order.status)
+        eligible_orders = Order.objects.filter(pk=order.pk, restaurant__owner=request.user, status=expected)
+        if target == Order.Status.PREPARING:
+            # Check the queue head in the UPDATE itself, not in a separate read.
+            queue_head = Order.objects.filter(
+                restaurant_id=order.restaurant_id, status=Order.Status.ACCEPTED,
+            ).order_by("created_at", "id").values("pk")[:1]
+            eligible_orders = eligible_orders.filter(pk=Subquery(queue_head))
+        updated = eligible_orders.update(status=order.status)
         if not updated:
+            if target == Order.Status.PREPARING:
+                return Response({"detail": "Only the oldest accepted order can start preparing. Refresh the board and prepare the first order in the queue."}, status=409)
             return Response({"detail": "This order has changed. Refresh the board and try again."}, status=409)
         order.refresh_from_db()
         return Response(RestaurantOrderSerializer(order).data)

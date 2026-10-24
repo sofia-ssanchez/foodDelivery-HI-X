@@ -5,6 +5,7 @@ import { apiFetch } from "@/lib/api";
 
 type Order = {
   id: number;
+  restaurant_id: number;
   restaurant_name: string;
   customer_name: string;
   status: string;
@@ -15,7 +16,7 @@ type Order = {
 
 const stages = [
   { status: "placed", title: "Placed", description: "Pending your approval", action: "Accept order", next: "accepted", empty: "New orders will appear here.", color: "#E7D5A5" },
-  { status: "accepted", title: "Accepted", description: "Ready for the kitchen", action: "Start preparing", next: "preparing", empty: "Accepted orders will appear here.", color: "#B9D987" },
+  { status: "accepted", title: "Accepted", description: "Prep queue · Oldest order starts first", action: "Start preparing", next: "preparing", empty: "Accepted orders will appear here.", color: "#B9D987" },
   { status: "preparing", title: "Preparing", description: "In the kitchen", action: "Mark as done", next: "ready", empty: "Orders being prepared will appear here.", color: "#43834A" },
   { status: "ready", title: "Done", description: "Ready for pickup", action: "", next: "", empty: "Finished orders will appear here.", color: "#285638" },
 ];
@@ -93,6 +94,16 @@ export default function RestaurantDashboard() {
     }
   }
 
+  const queueHeads = new Map<number, number>();
+  [...orders]
+    .filter((order) => order.status === "accepted")
+    .sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at) || a.id - b.id)
+    .forEach((order) => {
+      if (!queueHeads.has(order.restaurant_id)) queueHeads.set(order.restaurant_id, order.id);
+    });
+
+  const isWaiting = (order: Order) => order.status === "accepted" && queueHeads.get(order.restaurant_id) !== order.id;
+
   return (
     <main className="page-container botanical-background" style={{ alignItems: "flex-start" }}>
       <section className="w-full max-w-[1440px] mx-auto">
@@ -132,7 +143,7 @@ export default function RestaurantDashboard() {
                           {order.lines.map((line) => <li key={line.id} className="flex justify-between gap-2 text-sm"><span className="break-words"><strong>{line.quantity} ×</strong> {line.name}</span><span className="shrink-0">{money(Number(line.unit_price) * line.quantity)}</span></li>)}
                         </ul>
                         <div className="flex justify-between text-sm font-bold mb-4"><span>Total</span><span>{money(order.total)}</span></div>
-                        {stage.next ? <button type="button" className="btn btn-primary btn-full" disabled={pending !== null || refreshing} onClick={() => void advance(order, stage.next, stages[index + 1].title)} aria-label={`${stage.action} for order ${order.id}`}>{pending === order.id ? "Updating…" : `${stage.action} →`}</button> : <p className="rounded-xl bg-[var(--color-sage-light)] text-[var(--color-forest)] py-3 text-center text-sm font-semibold">✓ Ready for pickup</p>}
+                        {stage.next ? <button type="button" className="btn btn-primary btn-full" disabled={pending !== null || refreshing || isWaiting(order)} onClick={() => void advance(order, stage.next, stages[index + 1].title)} aria-label={`${isWaiting(order) ? "Waiting for earlier orders" : stage.action} for order ${order.id}`}>{pending === order.id ? "Updating…" : isWaiting(order) ? "Waiting in queue" : `${stage.action} →`}</button> : <p className="rounded-xl bg-[var(--color-sage-light)] text-[var(--color-forest)] py-3 text-center text-sm font-semibold">✓ Ready for pickup</p>}
                       </article>
                     ))}
                   </div>
