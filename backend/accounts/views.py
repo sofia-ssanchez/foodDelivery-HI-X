@@ -4,6 +4,8 @@ from django.middleware.csrf import get_token
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.views import APIView
+from guards.authentication import enforce_csrf
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView as BaseTokenRefreshView
@@ -12,6 +14,20 @@ from .serializers import (
     SignupSerializer,
     CustomTokenObtainPairSerializer,
 )
+
+
+class LogoutView(APIView):
+    # Allow cookie cleanup even when the access token has expired.
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        enforce_csrf(request)
+        response = Response({"message": "Logged out successfully."})
+        response["Cache-Control"] = "no-store"
+        for cookie in ("access_token", "refresh_token", "csrftoken"):
+            response.delete_cookie(cookie, path="/", samesite="Lax")
+        return response
 
 
 class SignupView(generics.CreateAPIView):

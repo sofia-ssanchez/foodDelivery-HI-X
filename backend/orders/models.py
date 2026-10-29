@@ -81,7 +81,6 @@ class Order(models.Model) :
         return get_order_state(self.status)
 
     def transition(self, target_status):
-        """Delegate to the current state; the caller persists the new status."""
         next_state = self.state.transition(target_status)
         self.status = next_state.status
         return next_state
@@ -92,6 +91,7 @@ class Order(models.Model) :
         REJECTED = 'rejected', 'Rejected'
         PREPARING = 'preparing', 'Preparing'
         READY = 'ready', 'Ready'
+        PICKED_UP = 'picked_up', 'Picked up'
         CANCELLED = 'cancelled', 'Cancelled'
 
     customer = models.ForeignKey(

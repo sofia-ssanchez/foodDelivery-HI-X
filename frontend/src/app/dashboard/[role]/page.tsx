@@ -60,9 +60,6 @@ export default function DashboardPage() {
           Signed-in role: {role}
         </p>
 
-        <Link className="btn btn-primary btn-full mt-6" href="/">
-          Back to login
-        </Link>
       </section>
     </main>
   );

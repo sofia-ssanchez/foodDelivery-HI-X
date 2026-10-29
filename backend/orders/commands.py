@@ -10,7 +10,6 @@ from .models import MenuItem, Order, OrderLine, Restaurant
 class OrderCommand(ABC):
     @abstractmethod
     def execute(self):
-        """Perform the requested order operation and return the order."""
         raise NotImplementedError
 
 
@@ -76,7 +75,6 @@ class OrderConflict(APIException):
 
 
 class RestaurantOrderCommand(OrderCommand):
-    """Shared authorization and persistence for restaurant order operations."""
 
     @property
     @abstractmethod
@@ -106,18 +104,28 @@ class RestaurantOrderCommand(OrderCommand):
             order.transition(self.target_status)
         except ValueError as exc:
             raise ValidationError({"detail": str(exc)}) from exc
-        # The state check and optional FIFO constraint are part of one UPDATE.
         if not self.eligible_orders(order).update(status=order.status):
             raise self.conflict()
         order.refresh_from_db()
         return order
 
 
-class AcceptOrderCommand(RestaurantOrderCommand):
+class PlacedQueueCommand(RestaurantOrderCommand):
+    def eligible_orders(self, order):
+        queue_head = Order.objects.filter(
+            restaurant_id=order.restaurant_id, status=Order.Status.PLACED,
+        ).order_by("created_at", "id").values("pk")[:1]
+        return super().eligible_orders(order).filter(pk=Subquery(queue_head))
+
+    def conflict(self):
+        return OrderConflict("Only the oldest placed order can be accepted or declined. Refresh the board and handle the first order in the queue.")
+
+
+class AcceptOrderCommand(PlacedQueueCommand):
     target_status = Order.Status.ACCEPTED
 
 
-class RejectOrderCommand(RestaurantOrderCommand):
+class RejectOrderCommand(PlacedQueueCommand):
     target_status = Order.Status.REJECTED
 
 
@@ -142,10 +150,14 @@ class MarkOrderReadyCommand(RestaurantOrderCommand):
     target_status = Order.Status.READY
 
 
+class MarkOrderPickedUpCommand(RestaurantOrderCommand):
+    target_status = Order.Status.PICKED_UP
+
+
 RESTAURANT_ORDER_COMMANDS = {
     command.target_status: command
     for command in (
         AcceptOrderCommand, RejectOrderCommand, CancelOrderCommand,
-        StartPreparationCommand, MarkOrderReadyCommand,
+        StartPreparationCommand, MarkOrderReadyCommand, MarkOrderPickedUpCommand,
     )
 }

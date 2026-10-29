@@ -71,4 +71,4 @@ class RestaurantOrderSerializer(serializers.ModelSerializer):
 
 class OrderStatusSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=list(RESTAURANT_ORDER_COMMANDS))
-    expected_status = serializers.ChoiceField(choices=["placed", "accepted", "preparing", "ready", "cancelled", "rejected"])
+    expected_status = serializers.ChoiceField(choices=Order.Status.choices)

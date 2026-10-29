@@ -2,8 +2,10 @@ export const API_BASE = "http://localhost:8000";
 
 let refreshRequest: Promise<void> | null = null;
 let refreshGeneration = 0;
+let loggingOut = false;
 
 async function refreshSession(): Promise<void> {
+  if (loggingOut) throw new Error("Logging out.");
   if (!refreshRequest) {
     refreshRequest = (async () => {
       const response = await fetch(`${API_BASE}/api/accounts/token/refresh/`, {
@@ -24,6 +26,7 @@ async function refreshSession(): Promise<void> {
 
 /** Send an authenticated request and retry once after refreshing on a 401. */
 export async function apiFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  if (loggingOut) throw new Error("Logging out.");
   const target = new URL(url, API_BASE);
   if (target.origin !== API_BASE) {
     throw new Error("Authenticated requests must use the API origin.");
@@ -52,4 +55,23 @@ export async function apiFetch(url: string, init: RequestInit = {}): Promise<Res
     }
   }
   return response;
+}
+
+export async function logout(): Promise<void> {
+  loggingOut = true;
+  try {
+    if (refreshRequest) await refreshRequest.catch(() => undefined);
+    const csrf = document.cookie.split(";").map((part) => part.trim())
+      .find((part) => part.startsWith("csrftoken="));
+    const response = await fetch(`${API_BASE}/api/accounts/logout/`, {
+      method: "POST",
+      credentials: "include",
+      headers: csrf ? { "X-CSRFToken": decodeURIComponent(csrf.slice("csrftoken=".length)) } : {},
+    });
+    if (!response.ok) throw new Error("Could not log out. Please try again.");
+    window.location.replace("/login");
+  } catch (error) {
+    loggingOut = false;
+    throw error;
+  }
 }
