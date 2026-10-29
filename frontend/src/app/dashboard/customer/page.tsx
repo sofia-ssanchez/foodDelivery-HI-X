@@ -278,10 +278,6 @@ export default function CustomerDashboard() {
           <h1 className="page-title mt-3">
             Customer Dashboard
           </h1>
-
-          <p className="body-text mt-3">
-            Order your favourites and keep track of every delivery.
-          </p>
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-[200px_minmax(0,1fr)] gap-6 items-start">

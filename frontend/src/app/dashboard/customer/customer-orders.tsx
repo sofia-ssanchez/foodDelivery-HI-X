@@ -52,7 +52,7 @@ export default function CustomerOrders({ category }: { category: "active" | "pas
   const visibleOrders = orders.filter((order) => pastStatuses.has(order.status) === (category === "past"));
   return <section>
     <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
-      <div><h2 className="section-title">{category === "active" ? "Active orders" : "Past orders"}</h2><p className="form-help mt-2">{category === "active" ? "Track your orders from approval to delivery." : "Your delivered, declined, and cancelled orders."}</p></div>
+      
       <button type="button" className="btn btn-secondary" disabled={loading} onClick={() => { if (!busy.current) { setLoading(true); void refresh(); } }}>{loading ? "Refreshing…" : "Refresh orders"}</button>
     </div>
     {error && <p role="alert" className="message message-error mb-5">{error}{updatedAt ? " Showing the last successful update." : ""}</p>}
