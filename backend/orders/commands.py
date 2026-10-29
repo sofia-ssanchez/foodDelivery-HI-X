@@ -150,10 +150,14 @@ class MarkOrderReadyCommand(RestaurantOrderCommand):
     target_status = Order.Status.READY
 
 
+class MarkOrderPickedUpCommand(RestaurantOrderCommand):
+    target_status = Order.Status.PICKED_UP
+
+
 RESTAURANT_ORDER_COMMANDS = {
     command.target_status: command
     for command in (
         AcceptOrderCommand, RejectOrderCommand, CancelOrderCommand,
-        StartPreparationCommand, MarkOrderReadyCommand,
+        StartPreparationCommand, MarkOrderReadyCommand, MarkOrderPickedUpCommand,
     )
 }

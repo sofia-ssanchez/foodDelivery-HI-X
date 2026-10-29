@@ -1,26 +1,13 @@
+"""Order creation and status-changing views."""
+
 from rest_framework import generics, status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
+
 from guards.permissions import RequireAuth, RequireRestaurantUser
-from .models import MenuItem, Restaurant, Order
 from .commands import PlaceOrderCommand, RESTAURANT_ORDER_COMMANDS
-from .serializers import (MenuItemSerializer, PlaceOrderSerializer, RestaurantSerializer,
-                          RestaurantOrderSerializer, OrderStatusSerializer)
+from .serializers import PlaceOrderSerializer, RestaurantOrderSerializer, OrderStatusSerializer
 
-class RestaurantListView(generics.ListAPIView):
-    queryset = Restaurant.objects.all()
-    serializer_class = RestaurantSerializer
-    permission_classes = [RequireAuth]
-
-
-class RestaurantMenuView(generics.ListAPIView):
-    serializer_class = MenuItemSerializer
-    permission_classes = [RequireAuth]
-
-    def get_queryset(self):
-        return MenuItem.objects.filter(
-            restaurant_id=self.kwargs["restaurant_id"]
-        )
 
 class PlaceOrderView(generics.CreateAPIView):
     serializer_class = PlaceOrderSerializer
@@ -51,20 +38,6 @@ class PlaceOrderView(generics.CreateAPIView):
         )
 
 
-class RestaurantOrderBoardView(generics.GenericAPIView):
-    permission_classes = [RequireRestaurantUser]
-    serializer_class = RestaurantOrderSerializer
-
-    def get(self, request):
-        restaurants = Restaurant.objects.filter(owner=request.user).order_by("name", "id")
-        orders = Order.objects.filter(restaurant__owner=request.user).select_related(
-            "customer", "restaurant"
-        ).prefetch_related("lines__menu_item").order_by("created_at", "id")
-        return Response({
-            "restaurants": RestaurantSerializer(restaurants, many=True).data,
-            "orders": self.get_serializer(orders, many=True).data,
-        })
-
 
 class RestaurantOrderStatusView(generics.GenericAPIView):
     permission_classes = [RequireRestaurantUser]
@@ -81,5 +54,4 @@ class RestaurantOrderStatusView(generics.GenericAPIView):
         )
         order = command.execute()
         return Response(RestaurantOrderSerializer(order).data)
-
 

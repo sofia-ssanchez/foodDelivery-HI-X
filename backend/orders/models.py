@@ -91,6 +91,7 @@ class Order(models.Model) :
         REJECTED = 'rejected', 'Rejected'
         PREPARING = 'preparing', 'Preparing'
         READY = 'ready', 'Ready'
+        PICKED_UP = 'picked_up', 'Picked up'
         CANCELLED = 'cancelled', 'Cancelled'
 
     customer = models.ForeignKey(

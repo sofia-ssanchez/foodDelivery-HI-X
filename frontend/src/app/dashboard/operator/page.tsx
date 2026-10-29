@@ -68,15 +68,14 @@ export default function OperatorDashboard() {
       }
     }
     void refresh();
-    const timer = setInterval(() => { if (!document.hidden) void refresh(); }, 15000);
-    return () => { disposed = true; clearInterval(timer); };
+    return () => { disposed = true; };
   }, []);
 
   return (
     <main className="page-container botanical-background" style={{ alignItems: "flex-start" }}>
       <div className="w-full max-w-[1280px] mx-auto">
         <header className="flex flex-wrap justify-between items-start gap-5 mb-9">
-          <div><p className="eyebrow">Five Leaf Clover · Platform operator</p><h1 className="page-title mt-3">Platform overview</h1><p className="body-text mt-3">A live look at the people, restaurants, and orders on your platform.</p></div>
+          <div><p className="eyebrow">Five Leaf Clover · Platform operator</p><h1 className="page-title mt-3">Platform overview</h1></div>
           
         </header>
         {loading && <p role="status" className="body-text">Loading platform statistics…</p>}
@@ -97,7 +96,6 @@ export default function OperatorDashboard() {
             <Breakdown title="Restaurants" description="Current availability across the platform" labels={restaurantStatuses} counts={data.restaurants_by_status} total={data.total_restaurants} />
             <Breakdown title="Order activity" description="All orders grouped by their current status" labels={orderStatuses} counts={data.orders_by_status} total={data.total_orders} />
           </div>
-          <p className="form-help mt-6 text-right">Refreshes every 15 seconds · Last updated <time dateTime={data.updated_at}>{new Date(data.updated_at).toLocaleTimeString("en-CA")}</time></p>
         </>}
       </div>
     </main>

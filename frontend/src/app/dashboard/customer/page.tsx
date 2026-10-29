@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { API_BASE, apiFetch } from "@/lib/api";
+import CustomerOrders from "./customer-orders";
 
 type Restaurant = {
   id: number;
@@ -23,6 +24,7 @@ type OrderResponse = {
   id?: number;
   status?: string;
   message?: string;
+  detail?: string;
 };
 
 const RESTAURANTS_ENDPOINT = `${API_BASE}/api/restaurants/`;
@@ -33,6 +35,7 @@ const menuEndpoint = (restaurantId: number) =>
 const ORDERS_ENDPOINT = `${API_BASE}/api/orders/`;
 
 export default function CustomerDashboard() {
+  const [section, setSection] = useState<"browse" | "active" | "past">("browse");
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [selectedRestaurant, setSelectedRestaurant] =
     useState<Restaurant | null>(null);
@@ -236,7 +239,7 @@ export default function CustomerDashboard() {
 
       if (!response.ok) {
         throw new Error(
-          data.message ||
+          data.detail || data.message ||
             "The order could not be placed. Please check your order."
         );
       }
@@ -263,8 +266,8 @@ export default function CustomerDashboard() {
   };
 
   return (
-    <main className="page-container botanical-background">
-      <section className="page-content">
+    <main className="page-container botanical-background" style={{ alignItems: "flex-start" }}>
+      <section className="w-full max-w-[1600px] mx-auto">
 
         {/* Header */}
         <header className="mb-8">
@@ -277,11 +280,18 @@ export default function CustomerDashboard() {
           </h1>
 
           <p className="body-text mt-3">
-            Browse restaurants, view menus, and place your order.
+            Order your favourites and keep track of every delivery.
           </p>
         </header>
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="grid grid-cols-1 md:grid-cols-[200px_minmax(0,1fr)] gap-6 items-start">
+          <nav aria-label="Customer dashboard" className="rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 flex flex-col gap-3 md:sticky md:top-5">
+            <p className="eyebrow px-2 mb-2">Your account</p>
+            {([{ key: "browse", label: "Order food" }, { key: "active", label: "Active orders" }, { key: "past", label: "Past orders" }] as const).map((item) => <button key={item.key} type="button" aria-pressed={section === item.key} className={`btn btn-full ${section === item.key ? "btn-primary" : "btn-secondary"}`} onClick={() => setSection(item.key)}>{item.label}</button>)}
+          </nav>
+          <div className="min-w-0">
+          {section !== "browse" && <CustomerOrders category={section} />}
+          {section === "browse" && <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
 
           {/* Restaurants */}
           <section className="form-card">
@@ -533,6 +543,8 @@ export default function CustomerDashboard() {
               </div>
             )}
           </section>
+          </div>}
+          </div>
         </div>
       </section>
     </main>
