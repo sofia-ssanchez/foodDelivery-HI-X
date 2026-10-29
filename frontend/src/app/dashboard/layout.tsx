@@ -21,7 +21,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   return <>
     <div className="border-b border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-3">
-      <div className="max-w-[1440px] mx-auto flex flex-wrap items-center justify-between gap-3">
+      <div className="w-full flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3 text-[var(--color-forest)]">
           <svg viewBox="0 0 64 72" aria-hidden="true" className="h-12 w-11 sm:h-14 sm:w-12 shrink-0">
             <path d="M32 34 C30 48 40 56 46 67" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
