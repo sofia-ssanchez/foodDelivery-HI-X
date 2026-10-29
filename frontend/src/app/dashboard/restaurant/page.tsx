@@ -119,7 +119,7 @@ export default function RestaurantDashboard() {
             {[{ status: "all", title: "All orders" }, ...stages].map((item) => {
               const count = orders.filter((order) => item.status === "all" ? stages.some((stage) => stage.status === order.status) : order.status === item.status).length;
               return <button key={item.status} type="button" aria-pressed={selectedStage === item.status} className={`btn btn-full flex justify-between gap-3 ${selectedStage === item.status ? "btn-primary" : "btn-secondary"}`} onClick={() => setSelectedStage(item.status)}>
-                <span>{item.title}</span><span className="tabular-nums" aria-label={`${count} orders`}>{loaded ? count : "—"}</span>
+                <span className="flex-1 text-left">{item.title}</span><span className="tabular-nums shrink-0 text-right" aria-label={`${count} orders`}>{loaded ? count : "—"}</span>
               </button>;
             })}
           </nav>

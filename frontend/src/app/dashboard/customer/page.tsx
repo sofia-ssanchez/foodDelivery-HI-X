@@ -283,7 +283,7 @@ export default function CustomerDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-[200px_minmax(0,1fr)] gap-6 items-start">
           <nav aria-label="Customer dashboard" className="rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 flex flex-col gap-3 md:sticky md:top-5">
             <p className="eyebrow px-2 mb-2">Your account</p>
-            {([{ key: "browse", label: "Order food" }, { key: "active", label: "Active orders" }, { key: "past", label: "Past orders" }] as const).map((item) => <button key={item.key} type="button" aria-pressed={section === item.key} className={`btn btn-full ${section === item.key ? "btn-primary" : "btn-secondary"}`} onClick={() => setSection(item.key)}>{item.label}</button>)}
+            {([{ key: "browse", label: "Order food" }, { key: "active", label: "Active orders" }, { key: "past", label: "Past orders" }] as const).map((item) => <button key={item.key} type="button" aria-pressed={section === item.key} className={`btn btn-full ${section === item.key ? "btn-primary" : "btn-secondary"}`} onClick={() => setSection(item.key)}><span className="w-full text-left">{item.label}</span></button>)}
           </nav>
           <div className="min-w-0">
           {section !== "browse" && <CustomerOrders category={section} />}
