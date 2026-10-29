@@ -15,7 +15,7 @@ type Order = {
 };
 
 const stages = [
-  { status: "placed", title: "Placed", description: "Pending your approval", action: "Accept order", next: "accepted", empty: "New orders will appear here.", color: "#E7D5A5" },
+  { status: "placed", title: "Placed", description: "Approval queue · Accept or decline oldest first", action: "Accept order", next: "accepted", empty: "New orders will appear here.", color: "#E7D5A5" },
   { status: "accepted", title: "Accepted", description: "Prep queue · Oldest order starts first", action: "Start preparing", next: "preparing", empty: "Accepted orders will appear here.", color: "#B9D987" },
   { status: "preparing", title: "Preparing", description: "In the kitchen", action: "Mark as done", next: "ready", empty: "Orders being prepared will appear here.", color: "#43834A" },
   { status: "ready", title: "Done", description: "Ready for pickup", action: "", next: "", empty: "Finished orders will appear here.", color: "#285638" },
@@ -85,7 +85,7 @@ export default function RestaurantDashboard() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || "Could not update this order.");
       setOrders((current) => current.map((item) => item.id === order.id ? data : item));
-      setNotice(`Order #${order.id} moved to ${title}.`);
+      setNotice(next === "rejected" ? `Order #${order.id} declined.` : `Order #${order.id} moved to ${title}.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not update this order.");
     } finally {
@@ -94,15 +94,16 @@ export default function RestaurantDashboard() {
     }
   }
 
-  const queueHeads = new Map<number, number>();
-  [...orders]
-    .filter((order) => order.status === "accepted")
-    .sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at) || a.id - b.id)
+  const sortedOrders = [...orders].sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at) || a.id - b.id);
+  const queueKey = (order: Order) => `${order.restaurant_id}:${order.status}`;
+  const queueHeads = new Map<string, number>();
+  sortedOrders
+    .filter((order) => order.status === "placed" || order.status === "accepted")
     .forEach((order) => {
-      if (!queueHeads.has(order.restaurant_id)) queueHeads.set(order.restaurant_id, order.id);
+      if (!queueHeads.has(queueKey(order))) queueHeads.set(queueKey(order), order.id);
     });
 
-  const isWaiting = (order: Order) => order.status === "accepted" && queueHeads.get(order.restaurant_id) !== order.id;
+  const isWaiting = (order: Order) => (order.status === "placed" || order.status === "accepted") && queueHeads.get(queueKey(order)) !== order.id;
 
   return (
     <main className="page-container botanical-background" style={{ alignItems: "flex-start" }}>
@@ -123,7 +124,7 @@ export default function RestaurantDashboard() {
         
           {loaded && <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 items-start">
             {stages.map((stage, index) => {
-              const items = orders.filter((order) => order.status === stage.status);
+              const items = sortedOrders.filter((order) => order.status === stage.status);
               return (
                 <section key={stage.status} className="rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)]/70 p-4 min-w-0" aria-labelledby={`heading-${stage.status}`}>
                   <div className="h-1 rounded-full mb-4" style={{ background: stage.color }} />
@@ -144,6 +145,7 @@ export default function RestaurantDashboard() {
                         </ul>
                         <div className="flex justify-between text-sm font-bold mb-4"><span>Total</span><span>{money(order.total)}</span></div>
                         {stage.next ? <button type="button" className="btn btn-primary btn-full" disabled={pending !== null || refreshing || isWaiting(order)} onClick={() => void advance(order, stage.next, stages[index + 1].title)} aria-label={`${isWaiting(order) ? "Waiting for earlier orders" : stage.action} for order ${order.id}`}>{pending === order.id ? "Updating…" : isWaiting(order) ? "Waiting in queue" : `${stage.action} →`}</button> : <p className="rounded-xl bg-[var(--color-sage-light)] text-[var(--color-forest)] py-3 text-center text-sm font-semibold">✓ Ready for pickup</p>}
+                        {order.status === "placed" && <button type="button" className="btn btn-secondary btn-full mt-2" disabled={pending !== null || refreshing || isWaiting(order)} onClick={() => void advance(order, "rejected", "Declined")} aria-label={`Decline order ${order.id}`}>Decline order</button>}
                       </article>
                     ))}
                   </div>

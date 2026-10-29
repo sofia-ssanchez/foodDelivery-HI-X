@@ -81,3 +81,5 @@ class RestaurantOrderStatusView(generics.GenericAPIView):
         )
         order = command.execute()
         return Response(RestaurantOrderSerializer(order).data)
+
+
