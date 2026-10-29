@@ -66,6 +66,5 @@ export default function CustomerOrders({ category }: { category: "active" | "pas
         <div className="flex justify-between font-bold"><span>Total</span><span>{money(order.total)}</span></div>
       </article>)}
     </div>
-    {updatedAt && <p className="form-help mt-6">Updated {updatedAt.toLocaleTimeString("en-CA")}</p>}
   </section>;
 }
