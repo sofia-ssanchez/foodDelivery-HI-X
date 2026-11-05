@@ -7,6 +7,11 @@ from types import SimpleNamespace
 from unittest.mock import patch
 from django.test import SimpleTestCase
 from .services import calculate_order_pricing
+from django.contrib.auth import get_user_model
+from django.test import TestCase
+from rest_framework.test import APIClient
+from orders.models import Order, OrderLine, Restaurant, MenuItem
+
 
 
 class PricingTests(SimpleTestCase):
@@ -63,3 +68,83 @@ class PricingTests(SimpleTestCase):
         items = [(2, "12.00"), (1, "5.00")]
 
         self.assertEqual(self.calculate(items), self.calculate(items))
+
+
+
+class OrderSummaryTests(TestCase):
+
+    def setUp(self):
+        User = get_user_model()
+
+        self.customer = User.objects.create_user(
+            username="summary_customer",
+            password="password123",
+            role="customer"
+        )
+
+        owner = User.objects.create_user(
+            username="summary_restaurant",
+            password="password123",
+            role="restaurant"
+        )
+
+        restaurant = Restaurant.objects.create(
+            name="Green Garden",
+            owner=owner,
+            latitude="45.500000",
+            longitude="-73.500000"
+        )
+
+        item = MenuItem.objects.create(
+            restaurant=restaurant,
+            name="Vegan Burger",
+            price="12.00"
+        )
+
+        self.order = Order.objects.create(
+            customer=self.customer,
+            restaurant=restaurant,
+            status="delivered"
+        )
+
+        OrderLine.objects.create(
+            order=self.order,
+            menu_item=item,
+            quantity=2,
+            unit_price="12.00"
+        )
+
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.customer)
+        self.url = f"/api/pricing/orders/{self.order.id}/summary/"
+
+    def test_delivered_order_summary(self):
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["subtotal"], "24.00")
+        self.assertEqual(response.data["total"], "29.49")
+        self.assertEqual(response.data["items"][0]["quantity"], 2)
+
+    def test_summary_before_delivery(self):
+        self.order.status = "ready"
+        self.order.save()
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 409)
+
+    def test_customer_cannot_view_other_orders(self):
+        User = get_user_model()
+
+        other_customer = User.objects.create_user(
+            username="other_customer",
+            password="password123",
+            role="customer"
+        )
+
+        self.client.force_authenticate(user=other_customer)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 404)
