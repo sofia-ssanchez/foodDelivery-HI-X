@@ -1,0 +1,7 @@
+
+{
+  "delivery_fee": "3.99",
+  "service_fee": "1.50",
+  "small_order_threshold": "15.00",
+  "small_order_surcharge": "2.00"
+}
