@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
-from orders.models import Restaurant, MenuItem
+from pricing.services import record_order_ledger
+from orders.models import Order, OrderLine, Restaurant, MenuItem
 import os
 
 
@@ -192,4 +193,86 @@ class Command(BaseCommand):
                     restore_baseline,
                     item_defaults,
                 )
+
+        # Seed finalized orders for the operator ledger
+        seeded_orders = [
+            {
+                "customer": "testCustomer1",
+                "restaurant": "Green Garden",
+                "status": Order.Status.DELIVERED,
+                "items": [
+                    ("Vegan Burger", 2),
+                    ("Sweet Potato Fries", 1),
+                ],
+            },
+            {
+                "customer": "testCustomer2",
+                "restaurant": "Vegan Corner",
+                "status": Order.Status.DELIVERED,
+                "items": [
+                    ("Tofu Bowl", 1),
+                    ("Vegan Poutine", 1),
+                ],
+            },
+            {
+                "customer": "testCustomer1",
+                "restaurant": "Vegan Corner",
+                "status": Order.Status.CANCELLED,
+                "items": [
+                    ("Mushroom Burger", 1),
+                    ("Lentil Soup", 2),
+                ],
+            },
+            {
+                "customer": "testCustomer2",
+                "restaurant": "Plant Paradise",
+                "status": Order.Status.CANCELLED,
+                "items": [
+                    ("Chickpea Curry", 1),
+                    ("Tempeh Sandwich", 1),
+                ],
+            },
+        ]
+
+        for data in seeded_orders:
+            customer = User.objects.get(username=data["customer"])
+            restaurant = Restaurant.objects.get(name=data["restaurant"])
+
+            order, created = Order.objects.get_or_create(
+                customer=customer,
+                restaurant=restaurant,
+                status=data["status"],
+            )
+
+            if created:
+                self.stdout.write(
+                    f"Created {data['status']} order #{order.id}"
+                )
+            else:
+                self.stdout.write(
+                    f"Order already exists: #{order.id}"
+                )
+
+            # Create the order lines if they don't already exist
+            for item_name, quantity in data["items"]:
+                menu_item = MenuItem.objects.get(
+                    restaurant=restaurant,
+                    name=item_name,
+                )
+
+                OrderLine.objects.get_or_create(
+                    order=order,
+                    menu_item=menu_item,
+                    defaults={
+                        "quantity": quantity,
+                        "unit_price": menu_item.price,
+                    },
+                )
+
+            # Make sure the finalized order has a ledger entry
+            record_order_ledger(order)
+
+        self.stdout.write(
+            self.style.SUCCESS("Seeded finalized orders and ledger entries!")
+        )
 
