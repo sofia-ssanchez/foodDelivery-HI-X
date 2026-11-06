@@ -232,6 +232,14 @@ class Command(BaseCommand):
                     ("Tempeh Sandwich", 1),
                 ],
             },
+            {
+                "customer": "testCustomer2",
+                "restaurant": "Green Garden",
+                "status": Order.Status.DELIVERED,
+                "items": [
+                    ("Sweet Potato Fries", 1),
+                ],
+           },
         ]
 
         for data in seeded_orders:
