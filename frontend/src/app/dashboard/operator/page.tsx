@@ -76,7 +76,12 @@ export default function OperatorDashboard() {
       <div className="w-full max-w-[1280px] mx-auto">
         <header className="flex flex-wrap justify-between items-start gap-5 mb-9">
           <div><p className="eyebrow">Five Leaf Clover · Platform operator</p><h1 className="page-title mt-3">Platform overview</h1></div>
-          
+      
+      <Link 
+        href="/dashboard/operator/ledger"
+        className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-3 text-sm font-semibold hover:opacity-80 transition"
+      >View order ledger →
+      </Link>
         </header>
         {loading && <p role="status" className="body-text">Loading platform statistics…</p>}
         {error && <div role="alert" className="message message-error mb-6"><p>{error}</p><p className="mt-2">{data ? "Showing the last successful update. " : ""}<Link href="/login">Return to login</Link></p></div>}
