@@ -34,6 +34,7 @@ export default function RestaurantDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [notice, setNotice] = useState("");
+  const [noticePaused, setNoticePaused] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -83,6 +84,7 @@ export default function RestaurantDashboard() {
     setPending(order.id);
     setError("");
     setNotice("");
+    setNoticePaused(false);
     try {
       const response = await apiFetch(`/api/restaurant/orders/${order.id}/status/`, {
         method: "PATCH",
@@ -107,6 +109,7 @@ export default function RestaurantDashboard() {
     setPendingRestaurant(restaurant.id);
     setError("");
     setNotice("");
+    setNoticePaused(false);
     try {
       const response = await apiFetch(`/api/restaurants/${restaurant.id}/toggle-activity/`, {
         method: "POST",
@@ -115,6 +118,7 @@ export default function RestaurantDashboard() {
       if (!response.ok) throw new Error(data.detail || "Could not update restaurant activity.");
       setRestaurants((current) => current.map((item) => item.id === restaurant.id ? data : item));
       setNotice(`${data.name} is now ${data.status}.`);
+      setNoticePaused(data.status === "paused");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not update restaurant activity.");
     } finally {
@@ -170,7 +174,7 @@ export default function RestaurantDashboard() {
           </nav>
           <div className="min-w-0">
         <div className="flex items-center justify-between gap-3 mb-5">
-          <div role="status" aria-live="polite" className="flex-1 min-w-0">{notice && <p className="message message-success">{notice}</p>}</div>
+          <div role="status" aria-live="polite" className="flex-1 min-w-0">{notice && <p className={`message ${noticePaused ? "message-warning" : "message-success"}`}>{notice}</p>}</div>
           <button type="button" className="btn btn-secondary shrink-0" disabled={loading || refreshing || pending !== null || pendingRestaurant !== null} onClick={requestRefresh}>{refreshing ? "Refreshing…" : "Refresh orders"}</button>
         </div>
         {error && <p role="alert" className="message message-error mb-5">{error}</p>}
