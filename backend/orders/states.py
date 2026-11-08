@@ -58,25 +58,60 @@ class PickedUpState(OrderState):
 
 class DeliveredState(OrderState):
     status = "delivered"
+
     def transition(self, targetState):
-        raise ValueError("Cannot transition from Delivered state")
-    
+        if targetState == "partially_refunded":
+            return PartiallyRefundedState()
+        elif targetState == "refunded":
+            return RefundedState()
+        raise ValueError(f"Invalid transition from Delivered to {targetState}")
+
+
 class RejectedState(OrderState):
     status = "rejected"
+
     def transition(self, targetState):
-        raise ValueError("Cannot transition from Rejected state")
+        if targetState == "partially_refunded":
+            return PartiallyRefundedState()
+        elif targetState == "refunded":
+            return RefundedState()
+        raise ValueError(f"Invalid transition from Rejected to {targetState}")
+
 
 class CancelledState(OrderState):
     status = "cancelled"
-    def transition(self, targetState):
-        raise ValueError("Cannot transition from Cancelled state")
 
+    def transition(self, targetState):
+        if targetState == "partially_refunded":
+            return PartiallyRefundedState()
+        elif targetState == "refunded":
+            return RefundedState()
+        raise ValueError(f"Invalid transition from Cancelled to {targetState}")
+
+
+class PartiallyRefundedState(OrderState):
+    status = "partially_refunded"
+
+    def transition(self, targetState):
+        if targetState == "refunded":
+            return RefundedState()
+        raise ValueError(
+            f"Invalid transition from Partially Refunded to {targetState}"
+        )
+
+
+class RefundedState(OrderState):
+    status = "refunded"
+
+    def transition(self, targetState):
+        raise ValueError("Cannot transition from Refunded state")
 
 STATE_CLASSES = {
     state.status: state
     for state in (
         PlacedState, AcceptedState, RejectedState, PreparingState,
         ReadyState, PickedUpState, DeliveredState, CancelledState,
+        PartiallyRefundedState, RefundedState,
     )
 }
 
