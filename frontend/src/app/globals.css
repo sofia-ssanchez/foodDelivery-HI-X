@@ -298,6 +298,12 @@ a:hover {
   color: var(--color-success-text);
 }
 
+.message-warning {
+  background: #fef9c3;
+  border: 1px solid #eab308;
+  color: #854d0e;
+}
+
 .message-error {
   border-color: #EBCDB8;
   background: var(--color-error-bg);

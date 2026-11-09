@@ -1,11 +1,16 @@
 from django.urls import path
 from .dashboard_views import (
     CustomerOrderListView, OperatorOverviewView, RestaurantListView,
-    RestaurantMenuView, RestaurantOrderBoardView,
+    RestaurantMenuView, RestaurantOrderBoardView, RestaurantPauseActivityView,
 )
 from .views import PlaceOrderView, RestaurantOrderStatusView
 
 urlpatterns = [
+    path(
+        "restaurants/<int:pk>/toggle-activity/",
+        RestaurantPauseActivityView.as_view(),
+        name="restaurant-toggle-activity",
+    ),
     path("customer/orders/", CustomerOrderListView.as_view(), name="customer-orders"),
     path("operator/overview/", OperatorOverviewView.as_view(), name="operator-overview"),
     path("restaurant/orders/", RestaurantOrderBoardView.as_view(), name="restaurant-orders"),
