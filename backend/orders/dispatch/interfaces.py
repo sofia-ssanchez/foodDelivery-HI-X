@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 
 from accounts.models import User
-from .models import Order
+from ..models import Order
 
 
 class DispatchStrategy(ABC):
