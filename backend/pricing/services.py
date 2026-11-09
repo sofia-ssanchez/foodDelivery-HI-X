@@ -1,7 +1,8 @@
 import json
 from decimal import Decimal, ROUND_HALF_UP
 from django.conf import settings
-
+from django.utils import timezone
+from .models import OrderLedger
 
 def money(value):
     return Decimal(str(value)).quantize(
@@ -48,3 +49,29 @@ def calculate_order_pricing(order):
         "small_order_surcharge": surcharge,
         "total": total
     }
+
+FINAL_STATES = ["delivered", "rejected", "cancelled"]
+
+
+def record_order_ledger(order):
+
+    if order.status not in FINAL_STATES:
+        raise ValueError("Order has not reached a final state")
+
+    pricing = calculate_order_pricing(order)
+
+    ledger_entry, created = OrderLedger.objects.get_or_create(
+        order=order,
+        defaults={
+            "final_state": order.status,
+            "order_created_at": order.created_at,
+            "finalized_at": timezone.now(),
+            "subtotal": pricing["subtotal"],
+            "delivery_fee": pricing["delivery_fee"],
+            "service_fee": pricing["service_fee"],
+            "small_order_surcharge": pricing["small_order_surcharge"],
+            "total_charge": pricing["total"]
+        }
+    )
+
+    return ledger_entry

@@ -3,6 +3,7 @@ from sys import modules
 from django.conf import settings
 from django.db import models
 from .states import get_order_state
+from pricing.services import record_order_ledger
 
 class Restaurant(models.Model) :
 
@@ -93,6 +94,7 @@ class Order(models.Model) :
         READY = 'ready', 'Ready'
         PICKED_UP = 'picked_up', 'Picked up'
         CANCELLED = 'cancelled', 'Cancelled'
+        DELIVERED = 'delivered', 'Delivered'
 
     customer = models.ForeignKey(
         settings.AUTH_USER_MODEL,
