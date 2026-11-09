@@ -1,9 +1,6 @@
-from os import name
-from sys import modules
 from django.conf import settings
 from django.db import models
 from .states import get_order_state
-from pricing.services import record_order_ledger
 
 class Restaurant(models.Model) :
 
@@ -95,6 +92,8 @@ class Order(models.Model) :
         PICKED_UP = 'picked_up', 'Picked up'
         CANCELLED = 'cancelled', 'Cancelled'
         DELIVERED = 'delivered', 'Delivered'
+        PARTIALLY_REFUNDED = 'partially_refunded', 'Partially Refunded'
+        REFUNDED = 'refunded', 'Refunded'
 
     customer = models.ForeignKey(
         settings.AUTH_USER_MODEL,

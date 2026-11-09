@@ -3,7 +3,7 @@ from django.db import transaction
 from django.db.models import Subquery
 from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import APIException, PermissionDenied, ValidationError
-
+from pricing.services import record_order_ledger
 from .models import MenuItem, Order, OrderLine, Restaurant
 
 
@@ -94,21 +94,82 @@ class RestaurantOrderCommand(OrderCommand):
     def conflict(self):
         return OrderConflict()
 
+    @transaction.atomic
     def execute(self):
         if not self.actor.is_active or self.actor.role != self.actor.Role.RESTAURANT:
-            raise PermissionDenied("Only restaurant accounts can perform this operation.")
-        order = get_object_or_404(Order, pk=self.order_id, restaurant__owner=self.actor)
+            raise PermissionDenied(
+                "Only restaurant accounts can perform this operation."
+            )
+
+        order = get_object_or_404(
+            Order,
+            pk=self.order_id,
+            restaurant__owner=self.actor
+        )
+
         if order.status != self.expected_status:
             raise OrderConflict()
+
         try:
             order.transition(self.target_status)
         except ValueError as exc:
             raise ValidationError({"detail": str(exc)}) from exc
+
         if not self.eligible_orders(order).update(status=order.status):
             raise self.conflict()
+
         order.refresh_from_db()
+
+        # Record the order in PRC's ledger if it reached a final state.
+        if order.status in [
+            Order.Status.DELIVERED,
+            Order.Status.REJECTED,
+            Order.Status.CANCELLED,
+        ]:
+            record_order_ledger(order)
+
         return order
 
+class CourierOrderCommand(OrderCommand):
+
+    @property
+    @abstractmethod
+    def target_status(self):
+        raise NotImplementedError
+
+    def __init__(self, actor, order_id, expected_status):
+        self.actor = actor
+        self.order_id = order_id
+        self.expected_status = expected_status
+
+    @transaction.atomic
+    def execute(self):
+        if not self.actor.is_active or self.actor.role != self.actor.Role.COURIER:
+            raise PermissionDenied(
+                "Only courier accounts can perform this operation."
+            )
+
+        order = get_object_or_404(
+            Order,
+            pk=self.order_id,
+            status=self.expected_status,
+            # Add your courier assignment relationship here.
+        )
+
+        try:
+            order.transition(self.target_status)
+        except ValueError as exc:
+            raise ValidationError({"detail": str(exc)}) from exc
+
+        order.save(update_fields=["status"])
+
+        if order.status == Order.Status.DELIVERED:
+            record_order_ledger(order)
+
+        return order
+
+class DeliverOrderCommand(CourierOrderCommand):
+    target_status = Order.Status.DELIVERED
 
 class PlacedQueueCommand(RestaurantOrderCommand):
     def eligible_orders(self, order):
@@ -160,4 +221,8 @@ RESTAURANT_ORDER_COMMANDS = {
         AcceptOrderCommand, RejectOrderCommand, CancelOrderCommand,
         StartPreparationCommand, MarkOrderReadyCommand, MarkOrderPickedUpCommand,
     )
+}
+
+COURIER_ORDER_COMMANDS = {
+    DeliverOrderCommand.target_status: DeliverOrderCommand,
 }
