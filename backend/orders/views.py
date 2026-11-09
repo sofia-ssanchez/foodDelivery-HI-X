@@ -4,9 +4,20 @@ from rest_framework import generics, status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
-from guards.permissions import RequireAuth, RequireRestaurantUser
-from .commands import PlaceOrderCommand, RESTAURANT_ORDER_COMMANDS
-from .serializers import PlaceOrderSerializer, RestaurantOrderSerializer, OrderStatusSerializer
+from guards.permissions import RequireAuth, RequireCustomer, RequireOperator, RequireRestaurantUser
+from .commands import (
+    CustomerCancelOrderCommand,
+    OperatorCancelOrderCommand,
+    PlaceOrderCommand,
+    RESTAURANT_ORDER_COMMANDS,
+)
+from .models import Order
+from .serializers import (
+    OperatorCancelOrderSerializer,
+    PlaceOrderSerializer,
+    RestaurantOrderSerializer,
+    OrderStatusSerializer,
+)
 
 
 class PlaceOrderView(generics.CreateAPIView):
@@ -54,4 +65,31 @@ class RestaurantOrderStatusView(generics.GenericAPIView):
         )
         order = command.execute()
         return Response(RestaurantOrderSerializer(order).data)
+
+
+class CustomerCancelOrderView(generics.GenericAPIView):
+    permission_classes = [RequireCustomer]
+
+    def post(self, request, pk):
+        order = CustomerCancelOrderCommand(
+            actor=request.user,
+            order_id=pk,
+            expected_status=Order.Status.PLACED,
+        ).execute()
+        return Response({"id": order.id, "status": order.status})
+
+
+class OperatorCancelOrderView(generics.GenericAPIView):
+    permission_classes = [RequireOperator]
+    serializer_class = OperatorCancelOrderSerializer
+
+    def post(self, request, pk):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        order = OperatorCancelOrderCommand(
+            actor=request.user,
+            order_id=pk,
+            expected_status=serializer.validated_data["expected_status"],
+        ).execute()
+        return Response({"id": order.id, "status": order.status})
 
