@@ -176,6 +176,38 @@ class CustomerRefundRequestView(APIView):
             status=status.HTTP_201_CREATED,
         )
 
+    def get(self, request):
+        refunds = RefundRequest.objects.filter(
+            customer=request.user
+        ).select_related("order").order_by("-created_at")
+
+        data = [
+            {
+                "id": refund.id,
+                "order_id": refund.order_id,
+                "reason": refund.reason,
+                "reason_display": refund.get_reason_display(),
+                "details": refund.details,
+                "requested_amount": (
+                    str(refund.requested_amount)
+                    if refund.requested_amount is not None
+                    else None
+                ),
+                "status": refund.status,
+                "approved_amount": (
+                    str(refund.approved_amount)
+                    if refund.approved_amount is not None
+                    else None
+                ),
+                "decision_notes": refund.decision_notes,
+                "created_at": refund.created_at,
+                "decided_at": refund.decided_at,
+            }
+            for refund in refunds
+        ]
+
+        return Response(data, status=status.HTTP_200_OK)
+
 
 class OperatorRefundRequestListView(APIView):
     permission_classes = [RequireAuth]
