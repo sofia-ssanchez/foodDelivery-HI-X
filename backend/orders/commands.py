@@ -2,8 +2,13 @@ from abc import ABC, abstractmethod
 from django.db import transaction
 from django.db.models import Subquery
 from django.shortcuts import get_object_or_404
-from rest_framework.exceptions import APIException, PermissionDenied, ValidationError
+from rest_framework.exceptions import (
+    APIException,
+    PermissionDenied,
+    ValidationError,
+)
 from pricing.services import record_order_ledger
+from .event_services import record_order_status_event
 from .models import MenuItem, Order, OrderLine, Restaurant
 
 
@@ -21,8 +26,12 @@ class PlaceOrderCommand(OrderCommand):
 
     @transaction.atomic
     def execute(self):
-        if not self.customer.is_active or self.customer.role != self.customer.Role.CUSTOMER:
+        if (
+            not self.customer.is_active
+            or self.customer.role != self.customer.Role.CUSTOMER
+        ):
             raise PermissionDenied("Only customers can place orders.")
+
         try:
             restaurant = Restaurant.objects.get(id=self.restaurant_id)
         except Restaurant.DoesNotExist:
@@ -63,6 +72,14 @@ class PlaceOrderCommand(OrderCommand):
             status=Order.Status.PLACED,
         )
 
+        # Record the initial order placement.
+        record_order_status_event(
+            order=order,
+            from_status="",
+            to_status=Order.Status.PLACED,
+            actor=self.customer,
+        )
+
         for line in order_lines:
             OrderLine.objects.create(order=order, **line)
 
@@ -71,7 +88,9 @@ class PlaceOrderCommand(OrderCommand):
 
 class OrderConflict(APIException):
     status_code = 409
-    default_detail = "This order has changed. Refresh the board and try again."
+    default_detail = (
+        "This order has changed. Refresh the board and try again."
+    )
 
 
 class RestaurantOrderCommand(OrderCommand):
@@ -88,7 +107,9 @@ class RestaurantOrderCommand(OrderCommand):
 
     def eligible_orders(self, order):
         return Order.objects.filter(
-            pk=order.pk, restaurant__owner=self.actor, status=self.expected_status,
+            pk=order.pk,
+            restaurant__owner=self.actor,
+            status=self.expected_status,
         )
 
     def conflict(self):
@@ -96,19 +117,24 @@ class RestaurantOrderCommand(OrderCommand):
 
     @transaction.atomic
     def execute(self):
-        if not self.actor.is_active or self.actor.role != self.actor.Role.RESTAURANT:
+        if (
+            not self.actor.is_active
+            or self.actor.role != self.actor.Role.RESTAURANT
+        ):
             raise PermissionDenied(
                 "Only restaurant accounts can perform this operation."
             )
 
         order = get_object_or_404(
-            Order,
+            Order.objects.select_for_update(),
             pk=self.order_id,
-            restaurant__owner=self.actor
+            restaurant__owner=self.actor,
         )
 
         if order.status != self.expected_status:
             raise OrderConflict()
+
+        previous_status = order.status
 
         try:
             order.transition(self.target_status)
@@ -120,6 +146,14 @@ class RestaurantOrderCommand(OrderCommand):
 
         order.refresh_from_db()
 
+        # Record the successful status transition.
+        record_order_status_event(
+            order=order,
+            from_status=previous_status,
+            to_status=order.status,
+            actor=self.actor,
+        )
+
         # Record the order in PRC's ledger if it reached a final state.
         if order.status in [
             Order.Status.DELIVERED,
@@ -129,6 +163,7 @@ class RestaurantOrderCommand(OrderCommand):
             record_order_ledger(order)
 
         return order
+
 
 class CourierOrderCommand(OrderCommand):
 
@@ -144,17 +179,22 @@ class CourierOrderCommand(OrderCommand):
 
     @transaction.atomic
     def execute(self):
-        if not self.actor.is_active or self.actor.role != self.actor.Role.COURIER:
+        if (
+            not self.actor.is_active
+            or self.actor.role != self.actor.Role.COURIER
+        ):
             raise PermissionDenied(
                 "Only courier accounts can perform this operation."
             )
 
         order = get_object_or_404(
-            Order,
+            Order.objects.select_for_update(),
             pk=self.order_id,
             status=self.expected_status,
-            # Add your courier assignment relationship here.
+            # Keep your existing courier assignment relationship here.
         )
+
+        previous_status = order.status
 
         try:
             order.transition(self.target_status)
@@ -163,23 +203,46 @@ class CourierOrderCommand(OrderCommand):
 
         order.save(update_fields=["status"])
 
+        # Record the successful status transition.
+        record_order_status_event(
+            order=order,
+            from_status=previous_status,
+            to_status=order.status,
+            actor=self.actor,
+        )
+
         if order.status == Order.Status.DELIVERED:
             record_order_ledger(order)
 
         return order
 
+
 class DeliverOrderCommand(CourierOrderCommand):
     target_status = Order.Status.DELIVERED
 
+
 class PlacedQueueCommand(RestaurantOrderCommand):
     def eligible_orders(self, order):
-        queue_head = Order.objects.filter(
-            restaurant_id=order.restaurant_id, status=Order.Status.PLACED,
-        ).order_by("created_at", "id").values("pk")[:1]
-        return super().eligible_orders(order).filter(pk=Subquery(queue_head))
+        queue_head = (
+            Order.objects.filter(
+                restaurant_id=order.restaurant_id,
+                status=Order.Status.PLACED,
+            )
+            .order_by("created_at", "id")
+            .values("pk")[:1]
+        )
+
+        return (
+            super()
+            .eligible_orders(order)
+            .filter(pk=Subquery(queue_head))
+        )
 
     def conflict(self):
-        return OrderConflict("Only the oldest placed order can be accepted or declined. Refresh the board and handle the first order in the queue.")
+        return OrderConflict(
+            "Only the oldest placed order can be accepted or declined. "
+            "Refresh the board and handle the first order in the queue."
+        )
 
 
 class AcceptOrderCommand(PlacedQueueCommand):
@@ -198,13 +261,26 @@ class StartPreparationCommand(RestaurantOrderCommand):
     target_status = Order.Status.PREPARING
 
     def eligible_orders(self, order):
-        queue_head = Order.objects.filter(
-            restaurant_id=order.restaurant_id, status=Order.Status.ACCEPTED,
-        ).order_by("created_at", "id").values("pk")[:1]
-        return super().eligible_orders(order).filter(pk=Subquery(queue_head))
+        queue_head = (
+            Order.objects.filter(
+                restaurant_id=order.restaurant_id,
+                status=Order.Status.ACCEPTED,
+            )
+            .order_by("created_at", "id")
+            .values("pk")[:1]
+        )
+
+        return (
+            super()
+            .eligible_orders(order)
+            .filter(pk=Subquery(queue_head))
+        )
 
     def conflict(self):
-        return OrderConflict("Only the oldest accepted order can start preparing. Refresh the board and prepare the first order in the queue.")
+        return OrderConflict(
+            "Only the oldest accepted order can start preparing. "
+            "Refresh the board and prepare the first order in the queue."
+        )
 
 
 class MarkOrderReadyCommand(RestaurantOrderCommand):
@@ -218,10 +294,15 @@ class MarkOrderPickedUpCommand(RestaurantOrderCommand):
 RESTAURANT_ORDER_COMMANDS = {
     command.target_status: command
     for command in (
-        AcceptOrderCommand, RejectOrderCommand, CancelOrderCommand,
-        StartPreparationCommand, MarkOrderReadyCommand, MarkOrderPickedUpCommand,
+        AcceptOrderCommand,
+        RejectOrderCommand,
+        CancelOrderCommand,
+        StartPreparationCommand,
+        MarkOrderReadyCommand,
+        MarkOrderPickedUpCommand,
     )
 }
+
 
 COURIER_ORDER_COMMANDS = {
     DeliverOrderCommand.target_status: DeliverOrderCommand,
