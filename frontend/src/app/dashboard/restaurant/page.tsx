@@ -3,6 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
 
+type Restaurant = {
+  id: number;
+  name: string;
+  status: "open" | "paused" | "closed";
+};
+
 type Order = {
   id: number;
   restaurant_id: number;
@@ -26,13 +32,15 @@ const money = (value: string | number) => new Intl.NumberFormat("en-CA", { style
 export default function RestaurantDashboard() {
   const [selectedStage, setSelectedStage] = useState("all");
   const [orders, setOrders] = useState<Order[]>([]);
-  const [restaurants, setRestaurants] = useState<{ id: number; name: string }[]>([]);
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [notice, setNotice] = useState("");
+  const [noticePaused, setNoticePaused] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [pending, setPending] = useState<number | null>(null);
+  const [pendingRestaurant, setPendingRestaurant] = useState<number | null>(null);
   const busy = useRef(false);
 
   const refresh = useCallback(() => {
@@ -76,6 +84,7 @@ export default function RestaurantDashboard() {
     setPending(order.id);
     setError("");
     setNotice("");
+    setNoticePaused(false);
     try {
       const response = await apiFetch(`/api/restaurant/orders/${order.id}/status/`, {
         method: "PATCH",
@@ -91,6 +100,30 @@ export default function RestaurantDashboard() {
     } finally {
       busy.current = false;
       setPending(null);
+    }
+  }
+
+  async function toggleActivity(restaurant: Restaurant) {
+    if (busy.current || restaurant.status === "closed") return;
+    busy.current = true;
+    setPendingRestaurant(restaurant.id);
+    setError("");
+    setNotice("");
+    setNoticePaused(false);
+    try {
+      const response = await apiFetch(`/api/restaurants/${restaurant.id}/toggle-activity/`, {
+        method: "POST",
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "Could not update restaurant activity.");
+      setRestaurants((current) => current.map((item) => item.id === restaurant.id ? data : item));
+      setNotice(`${data.name} is now ${data.status}.`);
+      setNoticePaused(data.status === "paused");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update restaurant activity.");
+    } finally {
+      busy.current = false;
+      setPendingRestaurant(null);
     }
   }
 
@@ -111,6 +144,22 @@ export default function RestaurantDashboard() {
         <header className="mb-8">
           <p className="eyebrow">Five Leaf Clover</p>
           <h1 className="page-title mt-3">{restaurants.length ? restaurants.map((restaurant) => restaurant.name).join(" · ") : "Your restaurant"}</h1>
+          <div className="mt-4 flex flex-wrap gap-3">
+            {restaurants.map((restaurant) => (
+              <div key={restaurant.id} className="flex flex-wrap items-center gap-3">
+                <span>{restaurant.name} · {restaurant.status}</span>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={loading || refreshing || pending !== null || pendingRestaurant !== null || restaurant.status === "closed"}
+                  onClick={() => void toggleActivity(restaurant)}
+                  aria-label={`${restaurant.status === "paused" ? "Resume" : "Pause"} activity for ${restaurant.name}`}
+                >
+                  {pendingRestaurant === restaurant.id ? "Updating…" : restaurant.status === "closed" ? "Closed" : restaurant.status === "paused" ? "Resume activity" : "Pause activity"}
+                </button>
+              </div>
+            ))}
+          </div>
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-[200px_minmax(0,1fr)] gap-6 items-start">
@@ -125,8 +174,8 @@ export default function RestaurantDashboard() {
           </nav>
           <div className="min-w-0">
         <div className="flex items-center justify-between gap-3 mb-5">
-          <div role="status" aria-live="polite" className="flex-1 min-w-0">{notice && <p className="message message-success">{notice}</p>}</div>
-          <button type="button" className="btn btn-secondary shrink-0" disabled={loading || refreshing || pending !== null} onClick={requestRefresh}>{refreshing ? "Refreshing…" : "Refresh orders"}</button>
+          <div role="status" aria-live="polite" className="flex-1 min-w-0">{notice && <p className={`message ${noticePaused ? "message-warning" : "message-success"}`}>{notice}</p>}</div>
+          <button type="button" className="btn btn-secondary shrink-0" disabled={loading || refreshing || pending !== null || pendingRestaurant !== null} onClick={requestRefresh}>{refreshing ? "Refreshing…" : "Refresh orders"}</button>
         </div>
         {error && <p role="alert" className="message message-error mb-5">{error}</p>}
         {loading && <p role="status" className="body-text mb-5">Loading your orders…</p>}
@@ -154,8 +203,8 @@ export default function RestaurantDashboard() {
                           {order.lines.map((line) => <li key={line.id} className="flex justify-between gap-2 text-sm"><span className="break-words"><strong>{line.quantity} ×</strong> {line.name}</span><span className="shrink-0">{money(Number(line.unit_price) * line.quantity)}</span></li>)}
                         </ul>
                         <div className="flex justify-between text-sm font-bold mb-4"><span>Total</span><span>{money(order.total)}</span></div>
-                        {stage.next ? <button type="button" className="btn btn-primary btn-full" disabled={pending !== null || refreshing || isWaiting(order)} onClick={() => void advance(order, stage.next, stages[index + 1].title)} aria-label={`${isWaiting(order) ? "Waiting for earlier orders" : stage.action} for order ${order.id}`}>{pending === order.id ? "Updating…" : isWaiting(order) ? "Waiting in queue" : `${stage.action} →`}</button> : <p className="rounded-xl bg-[var(--color-sage-light)] text-[var(--color-forest)] py-3 text-center text-sm font-semibold">✓ Picked up</p>}
-                        {order.status === "placed" && <button type="button" className="btn btn-secondary btn-full mt-2" disabled={pending !== null || refreshing || isWaiting(order)} onClick={() => void advance(order, "rejected", "Declined")} aria-label={`Decline order ${order.id}`}>Decline order</button>}
+                        {stage.next ? <button type="button" className="btn btn-primary btn-full" disabled={pending !== null || pendingRestaurant !== null || refreshing || isWaiting(order)} onClick={() => void advance(order, stage.next, stages[index + 1].title)} aria-label={`${isWaiting(order) ? "Waiting for earlier orders" : stage.action} for order ${order.id}`}>{pending === order.id ? "Updating…" : isWaiting(order) ? "Waiting in queue" : `${stage.action} →`}</button> : <p className="rounded-xl bg-[var(--color-sage-light)] text-[var(--color-forest)] py-3 text-center text-sm font-semibold">✓ Picked up</p>}
+                        {order.status === "placed" && <button type="button" className="btn btn-secondary btn-full mt-2" disabled={pending !== null || pendingRestaurant !== null || refreshing || isWaiting(order)} onClick={() => void advance(order, "rejected", "Declined")} aria-label={`Decline order ${order.id}`}>Decline order</button>}
                       </article>
                     ))}
                   </div>

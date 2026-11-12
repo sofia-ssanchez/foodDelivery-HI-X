@@ -39,7 +39,24 @@ class RestaurantMenuView(generics.ListAPIView):
         return MenuItem.objects.filter(
             restaurant_id=self.kwargs["restaurant_id"]
         )
+class RestaurantPauseActivityView(generics.GenericAPIView):
+    serializer_class = RestaurantSerializer
+    permission_classes = [RequireRestaurantUser]
 
+    def get_queryset(self):
+        return Restaurant.objects.filter(owner=self.request.user)
+
+    def post(self, request, *args, **kwargs):
+        restaurant = self.get_object()
+
+        if restaurant.status == Restaurant.Status.OPEN:
+            restaurant.status = Restaurant.Status.PAUSED
+
+        elif restaurant.status == Restaurant.Status.PAUSED:
+            restaurant.status = Restaurant.Status.OPEN
+
+        restaurant.save(update_fields=["status"])
+        return Response(self.get_serializer(restaurant).data)
 
 
 class RestaurantOrderBoardView(generics.GenericAPIView):

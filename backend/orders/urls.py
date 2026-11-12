@@ -1,12 +1,25 @@
 from django.urls import path
 from .dashboard_views import (
     CustomerOrderListView, OperatorOverviewView, RestaurantListView,
-    RestaurantMenuView, RestaurantOrderBoardView,
+    RestaurantMenuView, RestaurantOrderBoardView, RestaurantPauseActivityView,
+)
+from .views import (
+    CustomerCancelOrderView,
+    OperatorCancelOrderView,
+    PlaceOrderView,
+    RestaurantOrderStatusView,
 )
 from .views import PlaceOrderView, RestaurantOrderStatusView, OperatorOrderHistoryView
 
 urlpatterns = [
+    path(
+        "restaurants/<int:pk>/toggle-activity/",
+        RestaurantPauseActivityView.as_view(),
+        name="restaurant-toggle-activity",
+    ),
     path("customer/orders/", CustomerOrderListView.as_view(), name="customer-orders"),
+    path("customer/orders/<int:pk>/cancel/", CustomerCancelOrderView.as_view(), name="customer-cancel-order"),
+    path("operator/orders/<int:pk>/cancel/", OperatorCancelOrderView.as_view(), name="operator-cancel-order"),
     path("operator/overview/", OperatorOverviewView.as_view(), name="operator-overview"),
     path("operator/orders/", OperatorOrderHistoryView.as_view(), name="operator-order-history"),
     path("restaurant/orders/", RestaurantOrderBoardView.as_view(), name="restaurant-orders"),
