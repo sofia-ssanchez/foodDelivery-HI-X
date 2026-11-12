@@ -1,18 +1,24 @@
 import json
 from decimal import Decimal, ROUND_HALF_UP
+from datetime import timedelta
+
 from django.conf import settings
 from django.utils import timezone
 from django.db import models, transaction
 from django.shortcuts import get_object_or_404
+
 from rest_framework.exceptions import ValidationError, PermissionDenied
+
 from orders.models import Order
+from orders.event_services import record_order_status_event
+
 from .models import OrderLedger, RefundRequest, RefundLedgerEntry
-from datetime import timedelta
+
 
 def money(value):
     return Decimal(str(value)).quantize(
         Decimal("0.01"),
-        rounding=ROUND_HALF_UP
+        rounding=ROUND_HALF_UP,
     )
 
 
@@ -45,21 +51,23 @@ def calculate_order_pricing(order):
     if subtotal < threshold:
         surcharge = money(config["small_order_surcharge"])
 
-    total = money(subtotal + delivery_fee + service_fee + surcharge)
+    total = money(
+        subtotal + delivery_fee + service_fee + surcharge
+    )
 
     return {
         "subtotal": subtotal,
         "delivery_fee": delivery_fee,
         "service_fee": service_fee,
         "small_order_surcharge": surcharge,
-        "total": total
+        "total": total,
     }
+
 
 FINAL_STATES = ["delivered", "rejected", "cancelled"]
 
 
 def record_order_ledger(order):
-
     if order.status not in FINAL_STATES:
         raise ValueError("Order has not reached a final state")
 
@@ -75,11 +83,12 @@ def record_order_ledger(order):
             "delivery_fee": pricing["delivery_fee"],
             "service_fee": pricing["service_fee"],
             "small_order_surcharge": pricing["small_order_surcharge"],
-            "total_charge": pricing["total"]
-        }
+            "total_charge": pricing["total"],
+        },
     )
 
     return ledger_entry
+
 
 def get_total_refunded(ledger_entry):
     total = ledger_entry.refund_entries.aggregate(
@@ -97,8 +106,13 @@ def submit_refund_request(
     details="",
     requested_amount=None,
 ):
-    if not customer.is_active or customer.role != customer.Role.CUSTOMER:
-        raise PermissionDenied("Only customers can request refunds.")
+    if (
+        not customer.is_active
+        or customer.role != customer.Role.CUSTOMER
+    ):
+        raise PermissionDenied(
+            "Only customers can request refunds."
+        )
 
     order = get_object_or_404(
         Order.objects.select_for_update(),
@@ -124,16 +138,22 @@ def submit_refund_request(
         )
 
     total_refunded = get_total_refunded(ledger_entry)
-    remaining_amount = money(ledger_entry.total_charge - total_refunded)
+    remaining_amount = money(
+        ledger_entry.total_charge - total_refunded
+    )
 
     if remaining_amount <= 0:
-        raise ValidationError("This order has already been fully refunded.")
+        raise ValidationError(
+            "This order has already been fully refunded."
+        )
 
     if requested_amount is not None:
         requested_amount = money(requested_amount)
 
         if requested_amount <= 0:
-            raise ValidationError("Requested amount must be greater than zero.")
+            raise ValidationError(
+                "Requested amount must be greater than zero."
+            )
 
         if requested_amount > remaining_amount:
             raise ValidationError(
@@ -165,8 +185,13 @@ def decide_refund_request(
     approved_amount=None,
     decision_notes="",
 ):
-    if not operator.is_active or operator.role != operator.Role.OPERATOR:
-        raise PermissionDenied("Only operators can decide refund requests.")
+    if (
+        not operator.is_active
+        or operator.role != operator.Role.OPERATOR
+    ):
+        raise PermissionDenied(
+            "Only operators can decide refund requests."
+        )
 
     try:
         refund_request = (
@@ -176,13 +201,19 @@ def decide_refund_request(
             .get(pk=refund_request_id)
         )
     except RefundRequest.DoesNotExist:
-        raise ValidationError("Refund request does not exist.")
+        raise ValidationError(
+            "Refund request does not exist."
+        )
 
     if refund_request.status != RefundRequest.Status.PENDING:
-        raise ValidationError("This refund request has already been decided.")
+        raise ValidationError(
+            "This refund request has already been decided."
+        )
 
     if decision not in ["approve", "reject"]:
-        raise ValidationError("Decision must be approve or reject.")
+        raise ValidationError(
+            "Decision must be approve or reject."
+        )
 
     if decision == "reject":
         if not decision_notes.strip():
@@ -206,13 +237,13 @@ def decide_refund_request(
 
         return refund_request
 
-        # Evaluate eligibility before allowing approval.
+    # Evaluate eligibility before allowing approval.
     eligibility = evaluate_refund_eligibility(refund_request)
 
     if eligibility["eligibility_status"] == "ineligible":
         raise ValidationError({
             "eligibility": eligibility,
-            "detail": "This refund request is not eligible for approval."
+            "detail": "This refund request is not eligible for approval.",
         })
 
     if eligibility["eligibility_status"] == "manual_review":
@@ -241,7 +272,9 @@ def decide_refund_request(
     )
 
     total_refunded = get_total_refunded(ledger_entry)
-    remaining_amount = money(ledger_entry.total_charge - total_refunded)
+    remaining_amount = money(
+        ledger_entry.total_charge - total_refunded
+    )
 
     if approved_amount > remaining_amount:
         raise ValidationError(
@@ -273,6 +306,7 @@ def decide_refund_request(
     )
 
     # Create a separate refund transaction.
+    # The original charge in OrderLedger remains unchanged.
     RefundLedgerEntry.objects.create(
         original_charge=ledger_entry,
         refund_request=refund_request,
@@ -281,20 +315,41 @@ def decide_refund_request(
     )
 
     # Determine the order's new status using the cumulative refund amount.
-    new_total_refunded = money(total_refunded + approved_amount)
+    new_total_refunded = money(
+        total_refunded + approved_amount
+    )
 
     order = refund_request.order
 
     if new_total_refunded >= ledger_entry.total_charge:
         if order.status != Order.Status.REFUNDED:
+            previous_status = order.status
+
             order.transition(Order.Status.REFUNDED)
             order.save(update_fields=["status"])
 
+            record_order_status_event(
+                order=order,
+                from_status=previous_status,
+                to_status=order.status,
+                actor=operator,
+            )
+
     elif order.status != Order.Status.PARTIALLY_REFUNDED:
+        previous_status = order.status
+
         order.transition(Order.Status.PARTIALLY_REFUNDED)
         order.save(update_fields=["status"])
 
+        record_order_status_event(
+            order=order,
+            from_status=previous_status,
+            to_status=order.status,
+            actor=operator,
+        )
+
     return refund_request
+
 
 REFUND_REQUEST_WINDOW_HOURS = 48
 
@@ -378,7 +433,9 @@ def evaluate_refund_eligibility(refund_request):
 
     # Rule 6: The requested amount must be valid.
     if refund_request.requested_amount is not None:
-        requested_amount = money(refund_request.requested_amount)
+        requested_amount = money(
+            refund_request.requested_amount
+        )
 
         if requested_amount <= Decimal("0.00"):
             result["eligibility_status"] = "ineligible"
