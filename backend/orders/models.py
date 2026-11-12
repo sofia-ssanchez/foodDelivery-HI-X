@@ -113,6 +113,9 @@ class Order(models.Model) :
         default=Status.PLACED,
     )
 
+    picked_up_at = models.DateTimeField(null=True, blank=True, editable=False)
+    delivered_at = models.DateTimeField(null=True, blank=True, editable=False)
+
     created_at = models.DateTimeField(
         auto_now_add=True,
     )

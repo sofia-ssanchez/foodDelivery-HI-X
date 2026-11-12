@@ -20,16 +20,22 @@ class CourierActivityView(APIView):
 
     def get(self, request):
         courier = get_object_or_404(Courier, user=request.user)
-        offers = DeliveryAssignment.objects.filter(
+        assignments = DeliveryAssignment.objects.filter(courier=courier).select_related(
+            "order", "order__restaurant", "order__customer"
+        ).prefetch_related("order__lines__menu_item")
+        offers = assignments.filter(
             courier=courier,
             status=DeliveryAssignment.Status.OFFERED,
         ).select_related("order", "order__restaurant")
-        active = DeliveryAssignment.objects.filter(
+        active = assignments.filter(
             courier=courier,
             status=DeliveryAssignment.Status.ACCEPTED,
         ).select_related("order", "order__restaurant").first()
         return Response({
             "courier": CourierSerializer(courier).data,
+            "history": DeliveryAssignmentSerializer(assignments.exclude(
+                status__in=[DeliveryAssignment.Status.OFFERED, DeliveryAssignment.Status.ACCEPTED]
+            ), many=True).data,
             "offers": DeliveryAssignmentSerializer(offers, many=True).data,
             "active_assignment": (
                 DeliveryAssignmentSerializer(active).data if active else None
