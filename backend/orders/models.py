@@ -120,6 +120,39 @@ class Order(models.Model) :
     def __str__(self):
         return f"Orders {self.id} - {self.status}"
 
+class DeliveryAssignment(models.Model):
+    courier = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="delivery_assignments",
+        limit_choices_to={"role": "courier"},
+    )
+
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.PROTECT,
+        related_name="delivery_assignments",
+    )
+
+    is_active = models.BooleanField(default=True)
+
+    assigned_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["courier"],
+                condition=models.Q(is_active=True),
+                name="one_active_assignment_per_courier",
+            ),
+            models.UniqueConstraint(
+                fields=["order"],
+                condition=models.Q(is_active=True),
+                name="one_active_assignment_per_order",
+            ),
+        ]
+
+
 class OrderLine(models.Model) :
 
     order = models.ForeignKey(

@@ -16,6 +16,8 @@ class User(AbstractUser):
         default = Role.CUSTOMER,
     )
 
+    is_available = models.BooleanField(default=False)
+
     latitude = models.DecimalField(
         max_digits=9,
         decimal_places=6,
