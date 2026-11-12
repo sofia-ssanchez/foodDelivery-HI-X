@@ -74,14 +74,34 @@ export default function OperatorDashboard() {
   return (
     <main className="page-container botanical-background" style={{ alignItems: "flex-start" }}>
       <div className="w-full max-w-[1280px] mx-auto">
-        <header className="flex flex-wrap justify-between items-start gap-5 mb-9">
-          <div><p className="eyebrow">Five Leaf Clover · Platform operator</p><h1 className="page-title mt-3">Platform overview</h1></div>
-      
-      <Link 
-        href="/dashboard/operator/ledger"
-        className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-3 text-sm font-semibold hover:opacity-80 transition"
-      >View order ledger →
-      </Link>
+        <header className="mb-9">
+          <div>
+            <p className="eyebrow">Five Leaf Clover · Platform operator</p>
+            <h1 className="page-title mt-3">Platform overview</h1>
+          </div>
+
+          <nav className="flex flex-wrap items-center gap-3 mt-6">
+            <Link
+              href="/dashboard/operator/orders"
+              className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-3 text-sm font-semibold hover:opacity-80 transition"
+            >
+              Order history →
+            </Link>
+
+            <Link
+              href="/dashboard/operator/refunds"
+              className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-3 text-sm font-semibold hover:opacity-80 transition"
+            >
+              Review refund requests →
+            </Link>
+
+            <Link
+              href="/dashboard/operator/ledger"
+              className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-3 text-sm font-semibold hover:opacity-80 transition"
+            >
+              View order ledger →
+            </Link>
+          </nav>
         </header>
         {loading && <p role="status" className="body-text">Loading platform statistics…</p>}
         {error && <div role="alert" className="message message-error mb-6"><p>{error}</p><p className="mt-2">{data ? "Showing the last successful update. " : ""}<Link href="/login">Return to login</Link></p></div>}
