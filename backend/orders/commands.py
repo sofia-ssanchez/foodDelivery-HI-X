@@ -5,6 +5,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import APIException, PermissionDenied, ValidationError
 from pricing.services import record_order_ledger
 from .models import MenuItem, Order, OrderLine, Restaurant
+from .dispatch.events import order_ready_publisher
 
 
 class OrderCommand(ABC):
@@ -209,6 +210,12 @@ class StartPreparationCommand(RestaurantOrderCommand):
 
 class MarkOrderReadyCommand(RestaurantOrderCommand):
     target_status = Order.Status.READY
+
+    @transaction.atomic
+    def execute(self):
+        order = super().execute()
+        transaction.on_commit(lambda: order_ready_publisher.notify(order))
+        return order
 
 
 class MarkOrderPickedUpCommand(RestaurantOrderCommand):
