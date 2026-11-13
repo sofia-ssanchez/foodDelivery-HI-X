@@ -24,7 +24,7 @@ const stages = [
   { status: "placed", title: "Placed", description: "Approval queue · Accept or decline oldest first", action: "Accept order", next: "accepted", empty: "New orders will appear here.", color: "#E7D5A5" },
   { status: "accepted", title: "Accepted", description: "Prep queue · Oldest order starts first", action: "Start preparing", next: "preparing", empty: "Accepted orders will appear here.", color: "#B9D987" },
   { status: "preparing", title: "Preparing", description: "In the kitchen", action: "Mark ready for pick up", next: "ready", empty: "Orders being prepared will appear here.", color: "#43834A" },
-  { status: "ready", title: "Waiting for pick up", description: "Ready and awaiting collection", action: "Picked up", next: "picked_up", empty: "Orders waiting for pick up will appear here.", color: "#285638" },
+  { status: "ready", title: "Waiting for pick up", description: "Ready and awaiting collection", action: "", next: "", empty: "Orders waiting for pick up will appear here.", color: "#285638" },
   { status: "picked_up", title: "Picked up", description: "Collected from the restaurant", action: "", next: "", empty: "Collected orders will appear here.", color: "#777C65" },
 ];
 const money = (value: string | number) => new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD" }).format(Number(value));
@@ -72,10 +72,14 @@ export default function RestaurantDashboard() {
     if (busy.current) return;
     setRefreshing(true);
     void refresh();
+    const timer = window.setInterval(() => void refresh(), 15000);
+    return () => window.clearInterval(timer);
   }, [refresh]);
 
   useEffect(() => {
     void refresh();
+    const timer = window.setInterval(() => void refresh(), 15000);
+    return () => window.clearInterval(timer);
   }, [refresh]);
 
   async function advance(order: Order, next: string, title: string) {
@@ -203,7 +207,7 @@ export default function RestaurantDashboard() {
                           {order.lines.map((line) => <li key={line.id} className="flex justify-between gap-2 text-sm"><span className="break-words"><strong>{line.quantity} ×</strong> {line.name}</span><span className="shrink-0">{money(Number(line.unit_price) * line.quantity)}</span></li>)}
                         </ul>
                         <div className="flex justify-between text-sm font-bold mb-4"><span>Total</span><span>{money(order.total)}</span></div>
-                        {stage.next ? <button type="button" className="btn btn-primary btn-full" disabled={pending !== null || pendingRestaurant !== null || refreshing || isWaiting(order)} onClick={() => void advance(order, stage.next, stages[index + 1].title)} aria-label={`${isWaiting(order) ? "Waiting for earlier orders" : stage.action} for order ${order.id}`}>{pending === order.id ? "Updating…" : isWaiting(order) ? "Waiting in queue" : `${stage.action} →`}</button> : <p className="rounded-xl bg-[var(--color-sage-light)] text-[var(--color-forest)] py-3 text-center text-sm font-semibold">✓ Picked up</p>}
+                        {stage.next ? <button type="button" className="btn btn-primary btn-full" disabled={pending !== null || pendingRestaurant !== null || refreshing || isWaiting(order)} onClick={() => void advance(order, stage.next, stages[index + 1].title)} aria-label={`${isWaiting(order) ? "Waiting for earlier orders" : stage.action} for order ${order.id}`}>{pending === order.id ? "Updating…" : isWaiting(order) ? "Waiting in queue" : `${stage.action} →`}</button> : <p className="rounded-xl bg-[var(--color-sage-light)] text-[var(--color-forest)] py-3 text-center text-sm font-semibold">{order.status === "ready" ? "Awaiting courier pickup confirmation" : "✓ Picked up"}</p>}
                         {order.status === "placed" && <button type="button" className="btn btn-secondary btn-full mt-2" disabled={pending !== null || pendingRestaurant !== null || refreshing || isWaiting(order)} onClick={() => void advance(order, "rejected", "Declined")} aria-label={`Decline order ${order.id}`}>Decline order</button>}
                       </article>
                     ))}

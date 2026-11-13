@@ -6,6 +6,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from guards.authentication import enforce_csrf
+from guards.cookies import auth_cookie_name
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView as BaseTokenRefreshView
@@ -25,7 +26,9 @@ class LogoutView(APIView):
         enforce_csrf(request)
         response = Response({"message": "Logged out successfully."})
         response["Cache-Control"] = "no-store"
-        for cookie in ("access_token", "refresh_token", "csrftoken"):
+        # CSRF is host-wide and carries no login identity. Keep it so logging
+        # out on one frontend does not disrupt requests from another port.
+        for cookie in (auth_cookie_name(request, "access"), auth_cookie_name(request, "refresh")):
             response.delete_cookie(cookie, path="/", samesite="Lax")
         return response
 
@@ -37,7 +40,7 @@ class SignupView(generics.CreateAPIView):
 
 class TokenRefreshView(BaseTokenRefreshView):
     def post(self, request, *args, **kwargs):
-        refresh = request.COOKIES.get("refresh_token")
+        refresh = request.COOKIES.get(auth_cookie_name(request, "refresh"))
         if not refresh:
             raise InvalidToken("Please log in again.")
 
@@ -52,7 +55,7 @@ class TokenRefreshView(BaseTokenRefreshView):
         for token_type in ("access", "refresh"):
             if token_type in serializer.validated_data:
                 response.set_cookie(
-                    key=f"{token_type}_token",
+                    key=auth_cookie_name(request, token_type),
                     value=str(serializer.validated_data[token_type]),
                     httponly=True,
                     secure=not settings.DEBUG,
@@ -84,7 +87,7 @@ class LoginView(TokenObtainPairView):
         )
 
         response.set_cookie(
-            key="access_token",
+            key=auth_cookie_name(request, "access"),
             value=str(tokens["access"]),
             httponly=True,
             secure=not settings.DEBUG,
@@ -93,7 +96,7 @@ class LoginView(TokenObtainPairView):
         )
 
         response.set_cookie(
-            key="refresh_token",
+            key=auth_cookie_name(request, "refresh"),
             value=str(tokens["refresh"]),
             httponly=True,
             secure=not settings.DEBUG,
