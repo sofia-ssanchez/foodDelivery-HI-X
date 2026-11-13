@@ -6,6 +6,7 @@ from rest_framework.exceptions import PermissionDenied
 
 from delivery.models import Courier, DeliveryAssignment
 from pricing.models import RefundLedgerEntry, RefundRequest, OrderLedger
+from .demo_addresses import seed_customer_addresses
 from .models import Order, OrderLine, OrderStatusEvent, Restaurant, MenuItem
 
 
@@ -104,16 +105,12 @@ def seed_demo_orders():
     couriers = [Courier.objects.get(user__username=f'courier{i}') for i in (1, 2)]
     if DeliveryAssignment.objects.filter(courier__in=couriers, status__in=['offered', 'accepted']).exists():
         raise ValueError('Demo couriers already have active deliveries; use Reset demo to restore the seeded baseline.')
-    destinations = [
-        ('1455 Boulevard de Maisonneuve Ouest, Montreal', '45.497300', '-73.578900'),
-        ('845 Rue Sherbrooke Ouest, Montreal', '45.504800', '-73.577200'),
-        ('175 Rue Sainte-Catherine Ouest, Montreal', '45.508200', '-73.566400'),
-        ('475 Avenue du President-Kennedy, Montreal', '45.508600', '-73.571000'),
-        ('350 Rue Saint-Paul Est, Montreal', '45.509500', '-73.551500'),
-        ('1200 Rue de Bleury, Montreal', '45.505900', '-73.564200'),
-    ]
+    seed_customer_addresses(User.objects.filter(role="customer").order_by("username"), overwrite=True)
     # Vary placed + accepted counts across both sides of each map threshold.
     queued_counts = [(1, 1), (2, 2), (4, 3), (0, 0), (3, 2), (1, 0)]
+    # Vary the rest of the live workload too, while retaining delivery history.
+    preparing_counts = [0, 1, 3, 0, 2, 0]
+    ready_counts = [1, 1, 3, 0, 2, 0]
     # Keep preparation, pickup queues, and completed history available to demo.
     # Only two couriers exist: reserve one for an offer and one for a pickup.
     scenarios = [
@@ -122,7 +119,9 @@ def seed_demo_orders():
         for restaurant_index in range(len(restaurants))
         for sample in range(
             queued_counts[restaurant_index][0] if status == 'placed' else
-            queued_counts[restaurant_index][1] if status == 'accepted' else 3
+            queued_counts[restaurant_index][1] if status == 'accepted' else
+            preparing_counts[restaurant_index] if status == 'preparing' else
+            ready_counts[restaurant_index] if status == 'ready' else 3
         )
     ]
     scenarios.insert(3 * len(restaurants), ('picked_up', 2, 1))
@@ -132,7 +131,7 @@ def seed_demo_orders():
         restaurant = restaurants[restaurant_index]
         courier = couriers[restaurant_index % len(couriers)]
         customer = User.objects.get(username=f'customer{customer_number}')
-        address, lat, lng = destinations[customer_number - 1]
+        address, lat, lng = customer.delivery_address, customer.delivery_latitude, customer.delivery_longitude
         start = timezone.now() - timedelta(minutes=60 + (len(scenarios) - index) * 40)
         final_stage = stages.index(status)
         order = Order.objects.create(customer=customer, restaurant=restaurant, status=status,

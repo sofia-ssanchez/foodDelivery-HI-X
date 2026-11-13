@@ -15,13 +15,13 @@ All passwords: `12345678`.
 | operator1 | Operator |
 
 The baseline has six Montreal restaurants (five open and Lachine Bistro paused),
-eight available menu items per restaurant, and 74 orders. Placed and accepted
-counts vary by restaurant; each has three preparing, three ready, and three
-delivered orders. Vegan Corner also has
-one picked-up order. Seventeen ready orders start in the waiting queue. `courier1`
+eight available menu items per restaurant, and 51 orders. Placed, accepted,
+preparing, and ready counts vary by restaurant; each has three delivered orders.
+Vegan Corner also has one picked-up order. Six ready orders start in the waiting queue. `courier1`
 has an offer to accept; `courier2` is carrying an order. Delivered orders have billing entries and completed delivery history.
 All orders have customer accounts, saved addresses, coordinates, and status
-history. Customers select their delivery address at checkout. Address search and map tiles require internet access.
+history. Each customer account has a repeatably randomized sample Montreal address.
+Customers must select their delivery address at checkout; it is saved on their account and order. Address search and map tiles require internet access.
 
 Run the backend and frontend as usual. The development console appears at the
 bottom right, stores the last 100 requests per browser tab, and can be collapsed.
@@ -71,7 +71,7 @@ port share a login; all ports use the same backend database.
    mark them ready. Waiting orders are processed oldest-ready first; offers go
    to the nearest eligible idle courier. A courier may have only one active
    offer or delivery at a time.
-5. Click **Reset database** on any dashboard to restore all 74 seeded orders and
+5. Click **Reset database** on any dashboard to restore all 51 seeded orders and
    the original courier assignments. Refresh the other open dashboards.
 
 The reset button restores the seed data, not the pre-setup database backup, and

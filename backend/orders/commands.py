@@ -81,6 +81,15 @@ class PlaceOrderCommand(OrderCommand):
             status=Order.Status.PLACED,
         )
 
+        # Remember the last confirmed destination; each order keeps its own snapshot.
+        self.customer.delivery_address = order.delivery_address
+        self.customer.delivery_unit = order.delivery_unit
+        self.customer.delivery_latitude = order.delivery_latitude
+        self.customer.delivery_longitude = order.delivery_longitude
+        self.customer.save(update_fields=[
+            "delivery_address", "delivery_unit", "delivery_latitude", "delivery_longitude",
+        ])
+
         # Record the initial order placement.
         record_order_status_event(
             order=order,

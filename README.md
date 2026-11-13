@@ -91,8 +91,9 @@ Reset replaces current activity with the original demo dataset:
 - The fifteen accounts above, with passwords restored to `12345678`.
 - Six restaurants (five open, Lachine Bistro paused) with saved Montreal coordinates and eight available menu items each.
 - Two couriers with saved locations: `courier1` has an offer; `courier2` is carrying an order.
-- 74 orders: varied placed and accepted queues, plus three preparing, three ready for pickup, and three delivered orders per restaurant. Vegan Corner also has one picked-up order.
-- Customer delivery addresses, coordinates, order status history, and billing entries for the 18 delivered orders. Seventeen ready orders wait in the delivery queue; each courier still has at most one active offer or delivery.
+- 51 orders with varied workloads and three delivered orders per restaurant. Placed + accepted queues: Green Garden 2 (green), Vegan Corner 4 (amber), Plateau Pizza 7 (red), Verdun Bowl 0 (green), Rosemont Tacos 5 (amber), and Lachine Bistro 1 (red because paused). Vegan Corner also has one picked-up order.
+- Each customer receives a randomly assigned sample Montreal address and matching coordinates (repeatable on reset), also saved on their seeded orders. Checkout requires finding and selecting a delivery address; placing an order saves it on the customer account and snapshots it on the order.
+- Order status history and billing entries for the 18 delivered orders. Six ready orders wait in the delivery queue, plus one offered order; each courier still has at most one active offer or delivery.
 
 Orders, deliveries, refunds, extra accounts, and menu changes made during the
 demo are removed. Reset restores the seeded dataset, **not** the database backup
