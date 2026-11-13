@@ -1,17 +1,17 @@
 from abc import ABC, abstractmethod
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Subquery
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework.exceptions import APIException, PermissionDenied, ValidationError
 from pricing.services import record_order_ledger
-from .event_services import record_order_status_event
 from delivery import events
 from delivery.models import DeliveryAssignment
 from delivery.services import invalidate_offers_for_cancelled_order
-from .models import MenuItem, Order, OrderLine, Restaurant
-from .address_lookup import read_checkout_address
 from dispatch.events import order_ready_publisher
+from .address_lookup import read_checkout_address
+from .event_services import record_order_status_event
+from .models import MenuItem, Order, OrderLine, Restaurant
 
 
 class OrderCommand(ABC):
@@ -93,6 +93,81 @@ class PlaceOrderCommand(OrderCommand):
             OrderLine.objects.create(order=order, **line)
 
         return order
+
+
+class RestaurantMenuCommand(OrderCommand):
+    def __init__(self, actor, restaurant_id):
+        self.actor = actor
+        self.restaurant_id = restaurant_id
+
+    def get_restaurant(self):
+        if not self.actor.is_active or self.actor.role != self.actor.Role.RESTAURANT:
+            raise PermissionDenied("Only restaurant accounts can manage menu items.")
+        return get_object_or_404(
+            Restaurant,
+            pk=self.restaurant_id,
+            owner=self.actor,
+        )
+
+
+class CreateMenuItemCommand(RestaurantMenuCommand):
+    def __init__(self, actor, restaurant_id, *, name, price, status):
+        super().__init__(actor, restaurant_id)
+        self.name = name
+        self.price = price
+        self.status = status
+
+    @transaction.atomic
+    def execute(self):
+        restaurant = self.get_restaurant()
+        if MenuItem.objects.filter(restaurant=restaurant, name=self.name).exists():
+            raise ValidationError({"name": "A menu item with this name already exists."})
+
+        try:
+            # Keep the unique-name constraint safe against concurrent creates.
+            with transaction.atomic():
+                return MenuItem.objects.create(
+                    restaurant=restaurant,
+                    name=self.name,
+                    price=self.price,
+                    status=self.status,
+                )
+        except IntegrityError as exc:
+            raise ValidationError(
+                {"name": "A menu item with this name already exists."}
+            ) from exc
+
+
+class UpdateMenuItemCommand(RestaurantMenuCommand):
+    def __init__(self, actor, restaurant_id, menu_item_id, *, changes):
+        super().__init__(actor, restaurant_id)
+        self.menu_item_id = menu_item_id
+        self.changes = changes
+
+    @transaction.atomic
+    def execute(self):
+        restaurant = self.get_restaurant()
+        item = get_object_or_404(
+            MenuItem.objects.select_for_update(),
+            pk=self.menu_item_id,
+            restaurant=restaurant,
+        )
+        new_name = self.changes.get("name", item.name)
+        if MenuItem.objects.filter(restaurant=restaurant, name=new_name).exclude(
+            pk=item.pk
+        ).exists():
+            raise ValidationError({"name": "A menu item with this name already exists."})
+
+        for field, value in self.changes.items():
+            setattr(item, field, value)
+        try:
+            with transaction.atomic():
+                item.save(update_fields=tuple(self.changes))
+        except IntegrityError as exc:
+            raise ValidationError(
+                {"name": "A menu item with this name already exists."}
+            ) from exc
+        return item
 
 
 class OrderConflict(APIException):
