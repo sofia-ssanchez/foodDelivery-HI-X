@@ -6,6 +6,11 @@
     "dev": "next dev",
     "dev:second": "NEXT_DIST_DIR=.next-second next dev --port 3001",
     "dev:third": "NEXT_DIST_DIR=.next-third next dev --port 3002",
+    "dev:fourth": "NEXT_DIST_DIR=.next-fourth next dev --port 3003",
+    "dev:fifth": "NEXT_DIST_DIR=.next-fifth next dev --port 3004",
+    "dev:sixth": "NEXT_DIST_DIR=.next-sixth next dev --port 3005",
+    "dev:seventh": "NEXT_DIST_DIR=.next-seventh next dev --port 3006",
+    "dev:eighth": "NEXT_DIST_DIR=.next-eighth next dev --port 3007",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

@@ -38,7 +38,11 @@
     ".next-second/types/**/*.ts",
     ".next-second/dev/types/**/*.ts",
     ".next-third/types/**/*.ts",
-    ".next-third/dev/types/**/*.ts"
+    ".next-third/dev/types/**/*.ts",
+    ".next-fourth/types/**/*.ts",
+    ".next-fourth/dev/types/**/*.ts",
+    ".next-fifth/types/**/*.ts",
+    ".next-fifth/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

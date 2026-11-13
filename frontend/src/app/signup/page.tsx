@@ -1,5 +1,6 @@
 "use client";
 
+import { demoFetch } from "@/lib/demo-toasts";
 import { useState } from "react";
 import type { ComponentProps } from "react";
 import { API_BASE } from "@/lib/api";

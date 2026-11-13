@@ -158,22 +158,10 @@ MAILERS = {
 }
 
 CORS_ALLOWED_ORIGINS = [
-    origin.strip()
-    for origin in os.environ.get(
-        "DJANGO_CORS_ALLOWED_ORIGINS",
-        "http://localhost:3000,http://localhost:3001,http://localhost:3002",
-    ).split(",")
-    if origin.strip()
+    f"http://localhost:{port}" for port in range(3000, 3008)
 ]
 
-CSRF_TRUSTED_ORIGINS = [
-    origin.strip()
-    for origin in os.environ.get(
-        "DJANGO_CSRF_TRUSTED_ORIGINS",
-        "http://localhost:3000,http://localhost:3001,http://localhost:3002",
-    ).split(",")
-    if origin.strip()
-]
+CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS.copy()
 
 CORS_ALLOW_CREDENTIALS = True
 

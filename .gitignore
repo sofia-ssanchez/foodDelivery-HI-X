@@ -24,3 +24,5 @@ frontend/out/
 
 # Visual Studio local files
 .vs/
+# Local demo reset opt-in
+backend/.demo-enabled

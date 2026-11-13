@@ -320,7 +320,7 @@ class DeliveryLifecycleTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(Courier.objects.get(pk=self.courier.pk).status, Courier.Status.CARRYING)
 
-    def test_assigned_courier_can_go_offline_and_return_to_assigned(self):
+    def test_going_offline_releases_accepted_assignment_before_pickup(self):
         self.go_on_duty()
         assignment = self.offer()
         response = self.client.post(f"/api/delivery/offers/{assignment.id}/accept/")
@@ -330,13 +330,16 @@ class DeliveryLifecycleTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["status"], Courier.Status.OFFLINE)
         assignment.refresh_from_db()
-        self.assertEqual(assignment.status, DeliveryAssignment.Status.ACCEPTED)
+        self.assertEqual(assignment.status, DeliveryAssignment.Status.CANCELLED)
+
+        self.assertIsNotNone(assignment.cancelled_at)
+        self.assertEqual(Order.objects.get(pk=assignment.order_id).status, Order.Status.READY)
 
         response = self.client.patch(self.urls["duty"], {"on_duty": True}, format="json")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["status"], Courier.Status.ASSIGNED)
+        self.assertEqual(response.data["status"], Courier.Status.IDLE)
         assignment.refresh_from_db()
-        self.assertEqual(assignment.status, DeliveryAssignment.Status.ACCEPTED)
+        self.assertEqual(assignment.status, DeliveryAssignment.Status.CANCELLED)
 
     def test_pickup_then_delivery_use_order_transitions_and_record_ledger_once(self):
         self.go_on_duty()

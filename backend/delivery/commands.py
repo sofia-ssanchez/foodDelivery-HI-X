@@ -187,6 +187,24 @@ class ChangeDutyCommand(CourierCommand):
                 courier_id=courier.id,
             )
 
+        accepted = _active_assignments(courier).filter(
+            status=DeliveryAssignment.Status.ACCEPTED
+        ).first()
+        if accepted:
+            order = Order.objects.select_for_update().get(pk=accepted.order_id)
+            if accepted.picked_up_at or order.status == Order.Status.PICKED_UP:
+                raise ValidationError("A courier cannot go off duty while carrying an order.")
+            if not DeliveryAssignment.objects.filter(
+                pk=accepted.pk, status=DeliveryAssignment.Status.ACCEPTED,
+                picked_up_at__isnull=True,
+            ).update(status=DeliveryAssignment.Status.CANCELLED, cancelled_at=timezone.now()):
+                raise DeliveryConflict()
+            _schedule_event(
+                events.delivery_assignment_released,
+                assignment_id=accepted.pk, order_id=accepted.order_id,
+                courier_id=courier.pk,
+            )
+
         if courier.status != Courier.Status.OFFLINE:
             _transition_courier(courier, Courier.Status.OFFLINE)
         return courier
