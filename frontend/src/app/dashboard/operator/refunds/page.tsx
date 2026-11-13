@@ -348,9 +348,7 @@ export default function OperatorRefundsPage() {
       <div>
         <p className="eyebrow">Operator Dashboard</p>
         <h1 className="page-title">Refund Requests</h1>
-        <p className="form-help mt-2">
-          Review customer refund requests and make refund decisions.
-        </p>
+
       </div>
 
       <a
@@ -380,9 +378,7 @@ export default function OperatorRefundsPage() {
       <section className="flex w-full flex-col">
         <div className="mb-5">
           <h2 className="section-title">Customer Requests</h2>
-          <p className="form-help mt-1">
-            Select a request to review its details and make a decision.
-          </p>
+
         </div>
 
         {/* FILTERS */}
@@ -426,9 +422,7 @@ export default function OperatorRefundsPage() {
             <h3 className="font-semibold text-[var(--color-forest)]">
               No refund requests found
             </h3>
-            <p className="form-help mt-2">
-              There are no {filter === "all" ? "" : filter} refund requests.
-            </p>
+
           </div>
         ) : (
           <div className="flex flex-col gap-6">
@@ -582,10 +576,7 @@ export default function OperatorRefundsPage() {
                           placeholder="Explain your decision or provide additional review notes..."
                           className="w-full rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-sm"
                         />
-                        <p className="form-help mt-1">
-                          Required when rejecting a request or approving one
-                          that needs manual review.
-                        </p>
+
                       </div>
 
                       <div className="flex flex-col gap-3">

@@ -33,6 +33,8 @@ class OrderItemInputSerializer(serializers.Serializer):
 
 
 class PlaceOrderSerializer(serializers.Serializer):
+    delivery_address_token = serializers.CharField(max_length=3000)
+    delivery_unit = serializers.CharField(max_length=80, required=False, allow_blank=True)
     restaurant_id = serializers.IntegerField(min_value=1)
     items = OrderItemInputSerializer(many=True, allow_empty=False)
 
@@ -82,3 +84,12 @@ class OperatorCancelOrderSerializer(serializers.Serializer):
             Order.Status.READY,
         )
     )
+
+
+class AddressQuerySerializer(serializers.Serializer):
+    address = serializers.CharField(min_length=5, max_length=250)
+
+
+class LocationSerializer(serializers.Serializer):
+    latitude = serializers.DecimalField(max_digits=9, decimal_places=6, min_value=-90, max_value=90)
+    longitude = serializers.DecimalField(max_digits=9, decimal_places=6, min_value=-180, max_value=180)

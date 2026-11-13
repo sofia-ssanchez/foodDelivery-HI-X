@@ -404,10 +404,7 @@ function RefundRequestSection({
                 placeholder="Leave blank to request a full refund"
               />
 
-              <p className="form-help mt-2">
-                Your request will be reviewed by an operator.
-                Submitting a request does not guarantee approval.
-              </p>
+
 
               {error && (
                 <p role="alert" className="message message-error mt-3">
@@ -558,11 +555,7 @@ export default function CustomerOrders({
               : "No past orders yet"}
           </h3>
 
-          <p className="form-help mt-2">
-            {category === "active"
-              ? "Choose Order food in the sidebar to place an order."
-              : "Finished orders will appear here."}
-          </p>
+
         </div>
       )}
 

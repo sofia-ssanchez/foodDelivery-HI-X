@@ -5,6 +5,7 @@ from rest_framework import generics, status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from guards.permissions import RequireAuth
 from guards.authentication import enforce_csrf
 from guards.cookies import auth_cookie_name
 from rest_framework.exceptions import AuthenticationFailed
@@ -104,4 +105,13 @@ class LoginView(TokenObtainPairView):
             path="/",
         )
 
+        return response
+
+
+class CurrentAccountView(APIView):
+    permission_classes = [RequireAuth]
+
+    def get(self, request):
+        response = Response({"username": request.user.username, "role": request.user.role})
+        response["Cache-Control"] = "no-store"
         return response

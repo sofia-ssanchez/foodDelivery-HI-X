@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
+import MontrealMap from "@/components/montreal-map";
 
 type Restaurant = {
   id: number;
@@ -21,11 +22,11 @@ type Order = {
 };
 
 const stages = [
-  { status: "placed", title: "Placed", description: "Approval queue · Accept or decline oldest first", action: "Accept order", next: "accepted", empty: "New orders will appear here.", color: "#E7D5A5" },
-  { status: "accepted", title: "Accepted", description: "Prep queue · Oldest order starts first", action: "Start preparing", next: "preparing", empty: "Accepted orders will appear here.", color: "#B9D987" },
-  { status: "preparing", title: "Preparing", description: "In the kitchen", action: "Mark ready for pick up", next: "ready", empty: "Orders being prepared will appear here.", color: "#43834A" },
-  { status: "ready", title: "Waiting for pick up", description: "Ready and awaiting collection", action: "", next: "", empty: "Orders waiting for pick up will appear here.", color: "#285638" },
-  { status: "picked_up", title: "Picked up", description: "Collected from the restaurant", action: "", next: "", empty: "Collected orders will appear here.", color: "#777C65" },
+  { status: "placed", title: "Placed", action: "Accept order", next: "accepted", color: "#E7D5A5" },
+  { status: "accepted", title: "Accepted", action: "Start preparing", next: "preparing", color: "#B9D987" },
+  { status: "preparing", title: "Preparing", action: "Mark ready for pick up", next: "ready", color: "#43834A" },
+  { status: "ready", title: "Waiting for pick up", action: "", next: "", color: "#285638" },
+  { status: "picked_up", title: "Picked up", action: "", next: "", color: "#777C65" },
 ];
 const money = (value: string | number) => new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD" }).format(Number(value));
 
@@ -175,6 +176,7 @@ export default function RestaurantDashboard() {
                 <span className="flex-1 text-left">{item.title}</span><span className="tabular-nums shrink-0 text-right" aria-label={`${count} orders`}>{loaded ? count : "—"}</span>
               </button>;
             })}
+            <button type="button" aria-pressed={selectedStage === "map"} className={`btn btn-full ${selectedStage === "map" ? "btn-primary" : "btn-secondary"}`} onClick={() => setSelectedStage("map")}>Map</button>
           </nav>
           <div className="min-w-0">
         <div className="flex items-center justify-between gap-3 mb-5">
@@ -184,8 +186,9 @@ export default function RestaurantDashboard() {
         {error && <p role="alert" className="message message-error mb-5">{error}</p>}
         {loading && <p role="status" className="body-text mb-5">Loading your orders…</p>}
         {loaded && !restaurants.length && <p className="message mb-5">No restaurant is linked to your account yet.</p>}
-        
-          {loaded && <div className={selectedStage === "all" ? "grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-5 items-start" : "grid grid-cols-1 gap-5"}>
+
+          {selectedStage === "map" && <MontrealMap />}
+          {loaded && selectedStage !== "map" && <div className={selectedStage === "all" ? "grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-5 items-start" : "grid grid-cols-1 gap-5"}>
             {stages.map((stage, index) => {
               if (selectedStage !== "all" && selectedStage !== stage.status) return null;
               const items = sortedOrders.filter((order) => order.status === stage.status);
@@ -197,7 +200,7 @@ export default function RestaurantDashboard() {
                     <span className="rounded-full bg-[var(--color-sage-light)] px-3 py-1 text-sm font-semibold" aria-label={`${items.length} orders`}>{items.length}</span>
                   </div>
                   <div className={selectedStage === "all" ? "flex flex-col gap-4" : "grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 items-start"}>
-                    {!items.length && <div className="rounded-2xl border border-dashed border-[var(--color-border)] p-6 text-center"><p className="text-sm font-semibold">All clear here</p><p className="form-help mt-2">{stage.empty}</p></div>}
+                    {!items.length && <div className="rounded-2xl border border-dashed border-[var(--color-border)] p-6 text-center"><p className="text-sm font-semibold">All clear here</p></div>}
                     {items.map((order) => (
                       <article key={order.id} className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm">
                         <div className="flex justify-between items-start gap-2"><h4 className="font-bold text-[var(--color-forest)]">Order #{order.id}</h4><time className="form-help text-right" dateTime={order.created_at}>{new Date(order.created_at).toLocaleString("en-CA", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</time></div>

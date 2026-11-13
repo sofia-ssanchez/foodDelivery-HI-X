@@ -2,12 +2,16 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
+import SignedInAccount from "@/components/signed-in-account";
+import MontrealMap from "@/components/montreal-map";
 
 type Delivery = {
   id: number;
   restaurant_name: string;
   customer_name: string;
   order_id: number;
+  delivery_address: string;
+  delivery_unit: string;
   order_status: string;
   picked_up_at: string | null;
   delivered_at: string | null;
@@ -29,7 +33,7 @@ const labels: Record<string, string> = {
 
 export default function CourierDashboard() {
   const [activity, setActivity] = useState<Activity | null>(null);
-  const [tab, setTab] = useState<Tab>("Offers");
+  const [tab, setTab] = useState<Tab | "Map">("Offers");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [pending, setPending] = useState<number | null>(null);
@@ -117,7 +121,7 @@ export default function CourierDashboard() {
           <div>
             <p className="eyebrow">Five Leaf Clover · Courier</p>
             <h1 className="page-title mt-3">Your delivery dashboard</h1>
-            <p className="body-text mt-3">Go online to receive offers, confirm pickup, and complete your delivery.</p>
+          <SignedInAccount />
           </div>
           <button type="button" className="btn btn-secondary" disabled={disabled} onClick={() => void refresh()}>
             {refreshing ? "Refreshing…" : "Refresh deliveries"}
@@ -129,27 +133,24 @@ export default function CourierDashboard() {
             onClick={() => void mutate("/api/delivery/duty/", "PATCH", { on_duty: courierStatus === "offline" }, courierStatus === "offline" ? "You are online." : "You are offline.")}>
             {pending === -1 ? "Updating…" : courierStatus === "offline" ? "Go online" : "Go offline"}
           </button>
-          {courierStatus === "carrying" && <p className="body-text text-sm">Complete your delivery before going offline.</p>}
         </div>
-        <nav aria-label="Delivery categories" className="grid gap-4 sm:grid-cols-3 mb-6">
-          {tabs.map((item) => (
-            <button key={item} type="button" aria-pressed={tab === item} onClick={() => setTab(item)}
-              className={`rounded-2xl border p-5 text-left ${tab === item ? "bg-[var(--color-forest)] text-white" : "bg-[var(--color-surface)] border-[var(--color-border)]"}`}>
-              <span className="block text-sm font-semibold">{item}</span>
-              <span className="block mt-2 text-3xl font-semibold">{loading ? "—" : groups[item].length}</span>
-            </button>
-          ))}
-        </nav>
-        {tab === "Offers" && hasActiveDelivery && <p role="status" className="body-text mb-4">Finish your current delivery before accepting another offer.</p>}
+        <div className="grid grid-cols-1 md:grid-cols-[200px_minmax(0,1fr)] gap-6 items-start">
+          <nav aria-label="Courier dashboard menu" className="rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 flex flex-col gap-3 md:sticky md:top-5">
+            <p className="eyebrow px-2 mb-2">Courier menu</p>
+            {(["Map", ...tabs] as const).map((item) => <button key={item} type="button" aria-pressed={tab === item} onClick={() => setTab(item)}
+              className={`btn btn-full flex justify-between gap-3 ${tab === item ? "btn-primary" : "btn-secondary"}`}>
+              <span>{item}</span>{item !== "Map" && <span>{loading ? "—" : groups[item].length}</span>}
+            </button>)}
+          </nav>
+          <div className="min-w-0">
         {error && <p role="alert" className="message message-error mb-4">{error}</p>}
         {notice && <p role="status" className="message message-success mb-4">{notice}</p>}
         <div className="flex flex-wrap justify-between gap-2 mb-4">
           <h2 className="section-title">{tab}</h2>
         </div>
-        {loading ? <p role="status" className="form-card">Loading deliveries…</p> : groups[tab].length === 0 ? (
+        {tab === "Map" ? <MontrealMap /> : loading ? <p role="status" className="form-card">Loading deliveries…</p> : groups[tab].length === 0 ? (
           <div className="form-card text-center py-12">
             <h3 className="section-title">{tab === "Offers" ? "No delivery offers yet" : tab === "My deliveries" ? "You're ready for your next delivery" : "No delivery history yet"}</h3>
-            <p className="body-text mt-3">{tab === "Offers" ? "Delivery offers assigned to you appear here while you are online." : tab === "My deliveries" ? "Accept a delivery offer to get started." : "Completed and cancelled assignments will appear here."}</p>
           </div>
         ) : (
           <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
@@ -161,6 +162,7 @@ export default function CourierDashboard() {
                 </div>
                 <h3 className="section-title mt-4">{order.restaurant_name}</h3>
                 <p className="body-text mt-2">Customer: {order.customer_name}</p>
+                {order.delivery_address && <p className="body-text mt-2">Deliver to: {order.delivery_address}{order.delivery_unit ? ` · Unit ${order.delivery_unit}` : ""}</p>}
                 <p className="body-text text-sm mt-1">Placed {new Date(order.created_at).toLocaleString()}</p>
                 <p className="body-text text-sm mt-2">Pickup coordinates: {order.restaurant_latitude}, {order.restaurant_longitude}</p>
                 <ul className="my-5 border-y border-[var(--color-border)] py-4 space-y-2">
@@ -179,6 +181,8 @@ export default function CourierDashboard() {
             ))}
           </div>
         )}
+          </div>
+        </div>
       </section>
     </main>
   );

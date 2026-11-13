@@ -6,23 +6,19 @@ import { useParams } from "next/navigation";
 
 const dashboardInfo: Record<
   string,
-  { title: string; description: string }
+  { title: string }
 > = {
   customer: {
     title: "Welcome, customer!",
-    description: "Discover restaurants and find your next favourite meal.",
   },
   restaurant: {
     title: "Restaurant dashboard",
-    description: "Your space to manage your restaurant and orders.",
   },
   courier: {
     title: "Courier dashboard",
-    description: "Your space to manage deliveries.",
   },
   operator: {
     title: "Operator dashboard",
-    description: "Your space to oversee food delivery operations.",
   },
 };
 
@@ -54,7 +50,7 @@ export default function DashboardPage() {
 
         <h1 className="page-title mt-3">{dashboard.title}</h1>
 
-        <p className="body-text mt-4">{dashboard.description}</p>
+
 
         <p className="form-help mt-6">
           Signed-in role: {role}

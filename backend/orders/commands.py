@@ -10,6 +10,7 @@ from delivery import events
 from delivery.models import DeliveryAssignment
 from delivery.services import invalidate_offers_for_cancelled_order
 from .models import MenuItem, Order, OrderLine, Restaurant
+from .address_lookup import read_checkout_address
 from dispatch.events import order_ready_publisher
 
 
@@ -20,10 +21,12 @@ class OrderCommand(ABC):
 
 
 class PlaceOrderCommand(OrderCommand):
-    def __init__(self, customer, restaurant_id, items):
+    def __init__(self, customer, restaurant_id, items, delivery_address_token="", delivery_unit=""):
         self.customer = customer
         self.restaurant_id = restaurant_id
         self.items = items
+        self.delivery_address_token = delivery_address_token
+        self.delivery_unit = delivery_unit
 
     @transaction.atomic
     def execute(self):
@@ -32,6 +35,7 @@ class PlaceOrderCommand(OrderCommand):
             or self.customer.role != self.customer.Role.CUSTOMER
         ):
             raise PermissionDenied("Only customers can place orders.")
+        location = read_checkout_address(self.delivery_address_token, self.customer.pk)
 
         try:
             restaurant = Restaurant.objects.get(id=self.restaurant_id)
@@ -69,6 +73,10 @@ class PlaceOrderCommand(OrderCommand):
 
         order = Order.objects.create(
             customer=self.customer,
+            delivery_address=location["address"],
+            delivery_unit=self.delivery_unit,
+            delivery_latitude=location["latitude"],
+            delivery_longitude=location["longitude"],
             restaurant=restaurant,
             status=Order.Status.PLACED,
         )

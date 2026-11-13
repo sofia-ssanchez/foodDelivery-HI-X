@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api";
+import MontrealMap from "@/components/montreal-map";
 
 type Overview = {
   total_users: number;
@@ -21,13 +22,13 @@ const restaurantStatuses = [["open", "Open"], ["paused", "Paused"], ["closed", "
 const orderStatuses = [["placed", "Placed"], ["accepted", "Accepted"], ["preparing", "Preparing"], ["ready", "Ready for pickup"], ["picked_up", "Out for delivery"], ["delivered", "Delivered"], ["rejected", "Declined"], ["cancelled", "Cancelled"]];
 const number = (value: number) => value.toLocaleString("en-CA");
 
-function Breakdown({ title, description, labels, counts, total }: {
-  title: string; description: string; labels: string[][]; counts: Record<string, number>; total: number;
+function Breakdown({ title, labels, counts, total }: {
+  title: string; labels: string[][]; counts: Record<string, number>; total: number;
 }) {
   return (
     <section className="rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
       <h2 className="section-title">{title}</h2>
-      <p className="form-help mt-2 mb-6">{description}</p>
+
       <dl className="space-y-5">
         {labels.map(([key, label]) => {
           const count = counts[key] ?? 0;
@@ -45,6 +46,7 @@ function Breakdown({ title, description, labels, counts, total }: {
 }
 
 export default function OperatorDashboard() {
+  const [section, setSection] = useState<"overview" | "map">("overview");
   const [data, setData] = useState<Overview | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -80,7 +82,9 @@ export default function OperatorDashboard() {
             <h1 className="page-title mt-3">Platform overview</h1>
           </div>
 
-          <nav className="flex flex-wrap items-center gap-3 mt-6">
+          <nav aria-label="Operator dashboard" className="flex flex-wrap items-center gap-3 mt-6">
+            <button type="button" aria-pressed={section === "overview"} className={`btn ${section === "overview" ? "btn-primary" : "btn-secondary"}`} onClick={() => setSection("overview")}>Overview</button>
+            <button type="button" aria-pressed={section === "map"} className={`btn ${section === "map" ? "btn-primary" : "btn-secondary"}`} onClick={() => setSection("map")}>Map</button>
             <Link
               href="/dashboard/operator/orders"
               className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-3 text-sm font-semibold hover:opacity-80 transition"
@@ -103,24 +107,27 @@ export default function OperatorDashboard() {
             </Link>
           </nav>
         </header>
+        {section === "map" && <MontrealMap />}
+        {section === "overview" && <>
         {loading && <p role="status" className="body-text">Loading platform statistics…</p>}
         {error && <div role="alert" className="message message-error mb-6"><p>{error}</p><p className="mt-2">{data ? "Showing the last successful update. " : ""}<Link href="/login">Return to login</Link></p></div>}
         {data && <>
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
             {[
-              { label: "Total users", value: data.total_users, help: `${number(data.active_users)} enabled accounts` },
-              { label: "Restaurants", value: data.total_restaurants, help: `${number(data.restaurants_by_status.open ?? 0)} currently open` },
-              { label: "Active orders", value: data.active_orders, help: "Placed through out for delivery" },
-              { label: "Total orders", value: data.total_orders, help: "All statuses · All time" },
+              { label: "Total users", value: data.total_users },
+              { label: "Restaurants", value: data.total_restaurants },
+              { label: "Active orders", value: data.active_orders },
+              { label: "Total orders", value: data.total_orders },
             ].map((stat) => <section key={stat.label} className="rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-sm">
-              <h2 className="text-sm font-semibold text-[var(--color-muted)]">{stat.label}</h2><p className="text-4xl font-bold text-[var(--color-forest)] mt-4 tabular-nums">{number(stat.value)}</p><p className="form-help mt-3">{stat.help}</p>
+              <h2 className="text-sm font-semibold text-[var(--color-muted)]">{stat.label}</h2><p className="text-4xl font-bold text-[var(--color-forest)] mt-4 tabular-nums">{number(stat.value)}</p>
             </section>)}
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
-            <Breakdown title="People" description="Registered accounts by role" labels={roles} counts={data.users_by_role} total={data.total_users} />
-            <Breakdown title="Restaurants" description="Current availability across the platform" labels={restaurantStatuses} counts={data.restaurants_by_status} total={data.total_restaurants} />
-            <Breakdown title="Order activity" description="All orders grouped by their current status" labels={orderStatuses} counts={data.orders_by_status} total={data.total_orders} />
+            <Breakdown title="People" labels={roles} counts={data.users_by_role} total={data.total_users} />
+            <Breakdown title="Restaurants" labels={restaurantStatuses} counts={data.restaurants_by_status} total={data.total_restaurants} />
+            <Breakdown title="Order activity" labels={orderStatuses} counts={data.orders_by_status} total={data.total_orders} />
           </div>
+        </>}
         </>}
       </div>
     </main>
