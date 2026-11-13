@@ -1,17 +1,17 @@
 from abc import ABC, abstractmethod
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Subquery
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework.exceptions import APIException, PermissionDenied, ValidationError
 from pricing.services import record_order_ledger
-from .event_services import record_order_status_event
 from delivery import events
 from delivery.models import DeliveryAssignment
 from delivery.services import invalidate_offers_for_cancelled_order
-from .models import MenuItem, Order, OrderLine, Restaurant
-from .address_lookup import read_checkout_address
 from dispatch.events import order_ready_publisher
+from .address_lookup import read_checkout_address
+from .event_services import record_order_status_event
+from .models import MenuItem, Order, OrderLine, Restaurant
 
 
 class OrderCommand(ABC):
@@ -93,6 +93,81 @@ class PlaceOrderCommand(OrderCommand):
             OrderLine.objects.create(order=order, **line)
 
         return order
+
+
+class RestaurantMenuCommand(OrderCommand):
+    def __init__(self, actor, restaurant_id):
+        self.actor = actor
+        self.restaurant_id = restaurant_id
+
+    def get_restaurant(self):
+        if not self.actor.is_active or self.actor.role != self.actor.Role.RESTAURANT:
+            raise PermissionDenied("Only restaurant accounts can manage menu items.")
+        return get_object_or_404(
+            Restaurant,
+            pk=self.restaurant_id,
+            owner=self.actor,
+        )
+
+
+class CreateMenuItemCommand(RestaurantMenuCommand):
+    def __init__(self, actor, restaurant_id, *, name, price, status):
+        super().__init__(actor, restaurant_id)
+        self.name = name
+        self.price = price
+        self.status = status
+
+    @transaction.atomic
+    def execute(self):
+        restaurant = self.get_restaurant()
+        if MenuItem.objects.filter(restaurant=restaurant, name=self.name).exists():
+            raise ValidationError({"name": "A menu item with this name already exists."})
+
+        try:
+            # Keep the unique-name constraint safe against concurrent creates.
+            with transaction.atomic():
+                return MenuItem.objects.create(
+                    restaurant=restaurant,
+                    name=self.name,
+                    price=self.price,
+                    status=self.status,
+                )
+        except IntegrityError as exc:
+            raise ValidationError(
+                {"name": "A menu item with this name already exists."}
+            ) from exc
+
+
+class UpdateMenuItemCommand(RestaurantMenuCommand):
+    def __init__(self, actor, restaurant_id, menu_item_id, *, changes):
+        super().__init__(actor, restaurant_id)
+        self.menu_item_id = menu_item_id
+        self.changes = changes
+
+    @transaction.atomic
+    def execute(self):
+        restaurant = self.get_restaurant()
+        item = get_object_or_404(
+            MenuItem.objects.select_for_update(),
+            pk=self.menu_item_id,
+            restaurant=restaurant,
+        )
+        new_name = self.changes.get("name", item.name)
+        if MenuItem.objects.filter(restaurant=restaurant, name=new_name).exclude(
+            pk=item.pk
+        ).exists():
+            raise ValidationError({"name": "A menu item with this name already exists."})
+
+        for field, value in self.changes.items():
+            setattr(item, field, value)
+        try:
+            with transaction.atomic():
+                item.save(update_fields=tuple(self.changes))
+        except IntegrityError as exc:
+            raise ValidationError(
+                {"name": "A menu item with this name already exists."}
+            ) from exc
+        return item
 
 
 class OrderConflict(APIException):
@@ -182,10 +257,6 @@ class RestaurantOrderCommand(OrderCommand):
 
         return order
 
-
-class CourierOrderCommand(OrderCommand):
-        target_status = Order.Status.DELIVERED
-
 class PlacedQueueCommand(RestaurantOrderCommand):
     def eligible_orders(self, order):
         queue_head = Order.objects.filter(
@@ -228,22 +299,17 @@ class CancelOrderCommand(OrderCommand):
 
     @transaction.atomic
     def execute(self):
-        if (
-            not self.actor.is_active
-            or self.actor.role != self.actor.Role.COURIER
-        ):
-            raise PermissionDenied(
-                "Only courier accounts can perform this operation."
-            )
+        if not self.actor.is_active or self.actor.role != self.actor_role:
+            raise PermissionDenied(self.permission_message)
 
         order = get_object_or_404(
-            Order.objects.select_for_update(),
+            self.order_queryset().select_for_update(),
             pk=self.order_id,
-            status=self.expected_status,
-            # Keep your existing courier assignment relationship here.
         )
         if order.status != self.expected_status or order.status not in self.allowed_statuses:
             raise OrderConflict("This order cannot be cancelled in its current state.")
+
+        previous_status = order.status
 
         if DeliveryAssignment.objects.filter(
             order=order,
@@ -253,64 +319,25 @@ class CancelOrderCommand(OrderCommand):
                 "This order cannot be cancelled after a courier has accepted it."
             )
 
-        previous_status = order.status
-
         try:
             order.transition(Order.Status.CANCELLED)
         except ValueError as exc:
             raise OrderConflict(str(exc)) from exc
 
-        order.save(update_fields=["status"])
+        if not self.eligible_orders(order).update(status=Order.Status.CANCELLED):
+            raise OrderConflict("This order has changed. Refresh and try again.")
 
-        # Record the successful status transition.
+        order.refresh_from_db()
         record_order_status_event(
             order=order,
             from_status=previous_status,
             to_status=order.status,
             actor=self.actor,
         )
-
-        if order.status == Order.Status.DELIVERED:
-            record_order_ledger(order)
-        if not self.eligible_orders(order).update(status=Order.Status.CANCELLED):
-            raise OrderConflict("This order has changed. Refresh and try again.")
-
-        order.refresh_from_db()
         record_order_ledger(order)
         invalidate_offers_for_cancelled_order(order_id=order.id)
         return order
 
-
-class DeliverOrderCommand(CourierOrderCommand):
-    target_status = Order.Status.DELIVERED
-
-
-class PlacedQueueCommand(RestaurantOrderCommand):
-    def eligible_orders(self, order):
-        queue_head = (
-            Order.objects.filter(
-                restaurant_id=order.restaurant_id,
-                status=Order.Status.PLACED,
-            )
-            .order_by("created_at", "id")
-            .values("pk")[:1]
-        )
-
-        return (
-            super()
-            .eligible_orders(order)
-            .filter(pk=Subquery(queue_head))
-        )
-
-    def conflict(self):
-        return OrderConflict(
-            "Only the oldest placed order can be accepted or declined. "
-            "Refresh the board and handle the first order in the queue."
-        )
-
-
-class AcceptOrderCommand(PlacedQueueCommand):
-    target_status = Order.Status.ACCEPTED
 
 class CustomerCancelOrderCommand(CancelOrderCommand):
     actor_role = "customer"
@@ -380,10 +407,3 @@ RESTAURANT_ORDER_COMMANDS = {
         # MarkOrderDeliveredCommand,
     )
 }
-
-
-COURIER_ORDER_COMMANDS = {
-    DeliverOrderCommand.target_status: DeliverOrderCommand,
-}
-    
-

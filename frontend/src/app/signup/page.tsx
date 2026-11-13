@@ -3,6 +3,7 @@
 import { demoFetch } from "@/lib/demo-toasts";
 import { useState } from "react";
 import type { ComponentProps } from "react";
+import { API_BASE } from "@/lib/api";
 
 export default function SignupPage() {
   const [username, setUsername] = useState("");
@@ -21,8 +22,8 @@ export default function SignupPage() {
     setIsLoading(true);
 
     try {
-      const response = await demoFetch(
-        "http://localhost:8000/api/accounts/signup/",
+      const response = await fetch(
+        `${API_BASE}/api/accounts/signup/`,
         {
           method: "POST",
           headers: {
