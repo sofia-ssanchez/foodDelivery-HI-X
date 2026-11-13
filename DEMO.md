@@ -8,6 +8,14 @@ All passwords: `12345678`.
 | courier1, courier2 | Courier |
 | restaurant1 | Green Garden owner |
 | restaurant2 | Vegan Corner owner |
+| operator1 | Operator |
+
+The baseline has two open Montreal restaurants, eight available menu items per
+restaurant and eight orders: two placed, two preparing, one ready, one picked
+up, and two delivered. Courier1 has an offer to accept; courier2 is carrying an
+order. Delivered orders have billing entries and completed delivery history.
+All orders have customer accounts, saved addresses, coordinates, and status history. Customers select their delivery address
+at checkout. Address search and map tiles require internet access.
 | restaurant3 | Plateau Pizza owner |
 | restaurant4 | Verdun Bowl owner |
 | restaurant5 | Rosemont Tacos owner |
