@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+import os
 from pathlib import Path
 from datetime import timedelta
 
@@ -161,3 +162,6 @@ CSRF_TRUSTED_ORIGINS = [
 
 CORS_ALLOW_CREDENTIALS = True
 
+
+# Override with a private Photon instance for larger deployments.
+ADDRESS_LOOKUP_URL = os.environ.get("ADDRESS_LOOKUP_URL", "https://photon.komoot.io/api/")

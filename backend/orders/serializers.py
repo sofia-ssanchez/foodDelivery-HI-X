@@ -33,6 +33,8 @@ class OrderItemInputSerializer(serializers.Serializer):
 
 
 class PlaceOrderSerializer(serializers.Serializer):
+    delivery_address_token = serializers.CharField(max_length=3000)
+    delivery_unit = serializers.CharField(max_length=80, required=False, allow_blank=True)
     restaurant_id = serializers.IntegerField(min_value=1)
     items = OrderItemInputSerializer(many=True, allow_empty=False)
 

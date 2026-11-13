@@ -95,9 +95,7 @@ export default function LoginPage() {
 
           <h2 className="page-title mt-3">Log in</h2>
 
-          <p className="body-text mt-3 mb-8">
-            Enter your account details below.
-          </p>
+
 
           <form onSubmit={handleSubmit} className="form-stack">
             <div className="form-field">

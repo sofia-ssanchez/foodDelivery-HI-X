@@ -3,6 +3,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { API_BASE, apiFetch } from "@/lib/api";
+import CheckoutAddress, { type CheckoutAddressValue } from "@/components/checkout-address";
+import SignedInAccount from "@/components/signed-in-account";
+import MontrealMap from "@/components/montreal-map";
 import CustomerOrders from "./customer-orders";
 
 type Restaurant = {
@@ -38,7 +41,8 @@ const menuEndpoint = (restaurantId: number) =>
 const ORDERS_ENDPOINT = `${API_BASE}/api/orders/`;
 
 export default function CustomerDashboard() {
-  const [section, setSection] = useState<"browse" | "active" | "past">("browse");
+  const [deliveryAddress, setDeliveryAddress] = useState<CheckoutAddressValue>({ token: "", unit: "", address: "" });
+  const [section, setSection] = useState<"browse" | "active" | "past" | "map">("map");
 
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [selectedRestaurant, setSelectedRestaurant] =
@@ -249,11 +253,18 @@ export default function CustomerDashboard() {
       return;
     }
 
+    if (!deliveryAddress.token) {
+      setOrderError("Find and select a delivery address before placing your order.");
+      return;
+    }
+
     setPlacingOrder(true);
 
     try {
       const orderBody = {
         restaurant_id: selectedRestaurant.id,
+        delivery_address_token: deliveryAddress.token,
+        delivery_unit: deliveryAddress.unit.trim(),
         items: cart.map((item) => ({
           menu_item_id: item.id,
           quantity: item.quantity,
@@ -327,6 +338,7 @@ export default function CustomerDashboard() {
           <h1 className="page-title mt-3">
             Customer Dashboard
           </h1>
+          <SignedInAccount />
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-[200px_minmax(0,1fr)] gap-6 items-start">
@@ -338,6 +350,7 @@ export default function CustomerDashboard() {
 
             {(
               [
+                { key: "map", label: "Map" },
                 { key: "browse", label: "Order food" },
                 { key: "active", label: "Active orders" },
                 { key: "past", label: "Past orders" },
@@ -358,7 +371,8 @@ export default function CustomerDashboard() {
           </nav>
 
           <div className="min-w-0">
-            {section !== "browse" && (
+            {section === "map" && <MontrealMap />}
+            {(section === "active" || section === "past") && (
               <CustomerOrders category={section} />
             )}
 
@@ -368,9 +382,7 @@ export default function CustomerDashboard() {
                 <section className="form-card">
                   <h2 className="section-title">Restaurants</h2>
 
-                  <p className="body-text mt-2">
-                    Choose an open restaurant to view its menu.
-                  </p>
+
 
                   {loadingRestaurants && (
                     <p className="body-text mt-4">
@@ -438,11 +450,7 @@ export default function CustomerDashboard() {
                 <section className="form-card">
                   <h2 className="section-title">Menu</h2>
 
-                  {!selectedRestaurant && (
-                    <p className="body-text mt-3">
-                      Select an open restaurant to view its menu.
-                    </p>
-                  )}
+
 
                   {selectedRestaurant && (
                     <>
@@ -533,11 +541,7 @@ export default function CustomerDashboard() {
                 <section className="form-card">
                   <h2 className="section-title">Your Order</h2>
 
-                  {!selectedRestaurant && (
-                    <p className="body-text mt-3">
-                      Choose a restaurant to begin your order.
-                    </p>
-                  )}
+
 
                   {selectedRestaurant && cart.length === 0 && (
                     <p className="body-text mt-3">
@@ -605,6 +609,7 @@ export default function CustomerDashboard() {
 
                   {cart.length > 0 && (
                     <>
+                      <CheckoutAddress value={deliveryAddress} onChange={setDeliveryAddress} disabled={placingOrder} />
                       <div className="mt-6 border-t pt-4">
                         <p className="font-semibold">
                           Total: ${totalPrice.toFixed(2)}
@@ -616,7 +621,7 @@ export default function CustomerDashboard() {
                         className="btn btn-primary btn-full mt-4"
                         onClick={placeOrder}
                         disabled={
-                          placingOrder ||
+                          placingOrder || !deliveryAddress.token ||
                           selectedRestaurant?.status !== "open"
                         }
                       >

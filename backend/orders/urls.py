@@ -1,4 +1,6 @@
 from django.urls import path
+from .address_lookup import AddressLookupView
+from .map_views import DashboardMapView, MapLocationView
 from .dashboard_views import (
     CustomerOrderListView, OperatorOverviewView, RestaurantListView,
     RestaurantMenuView, RestaurantOrderBoardView, RestaurantPauseActivityView,
@@ -11,6 +13,9 @@ from .views import (
 )
 
 urlpatterns = [
+    path("customer/address-lookup/", AddressLookupView.as_view(), name="checkout-address-lookup"),
+    path("map/", DashboardMapView.as_view(), name="dashboard-map"),
+    path("map/location/", MapLocationView.as_view(), name="map-location"),
     path(
         "restaurants/<int:pk>/toggle-activity/",
         RestaurantPauseActivityView.as_view(),

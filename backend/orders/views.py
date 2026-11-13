@@ -35,6 +35,8 @@ class PlaceOrderView(generics.CreateAPIView):
             customer=request.user,
             restaurant_id=serializer.validated_data["restaurant_id"],
             items=serializer.validated_data["items"],
+            delivery_address_token=serializer.validated_data["delivery_address_token"],
+            delivery_unit=serializer.validated_data.get("delivery_unit", ""),
         )
 
         order = command.execute()

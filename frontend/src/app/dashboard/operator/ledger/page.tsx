@@ -175,9 +175,7 @@ export default function LedgerPage() {
 
             <h1 className="page-title mt-3">Order ledger</h1>
 
-            <p className="form-help mt-3">
-              Financial records for finalized orders and refunds.
-            </p>
+
           </div>
 
           <Link
