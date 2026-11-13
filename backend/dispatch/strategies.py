@@ -3,12 +3,12 @@
 
 from math import atan2, cos, radians, sin, sqrt
 
-from accounts.models import User
+from delivery.models import Courier
 from orders.models import Order, Restaurant
 from .interfaces import DispatchStrategy
 
 
-def distance_to_restaurant(courier: User, restaurant: Restaurant,) -> float:
+def distance_to_restaurant(courier: Courier, restaurant: Restaurant,) -> float:
 
     lat1 = radians(float(courier.latitude))
     lon1 = radians(float(courier.longitude))
@@ -29,7 +29,7 @@ def distance_to_restaurant(courier: User, restaurant: Restaurant,) -> float:
 
 class NearestIdleCourierStrategy(DispatchStrategy):
 
-    def select_courier(self, order: Order, couriers: list[User]) -> User | None:
+    def select_courier(self, order: Order, couriers: list[Courier]) -> Courier | None:
         """Select from eligible idle couriers supplied by the caller."""
         closest_courier = None
         closest_distance = float("inf")
@@ -45,7 +45,7 @@ class NearestIdleCourierStrategy(DispatchStrategy):
                 or distance < closest_distance
                 or (
                     distance == closest_distance
-                    and courier.id < closest_courier.id
+                    and courier.user_id < closest_courier.user_id
                 )
             ):
                 closest_courier = courier

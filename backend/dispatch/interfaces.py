@@ -2,13 +2,13 @@
 
 from abc import ABC, abstractmethod
 
-from accounts.models import User
-from ..models import Order
+from delivery.models import Courier
+from orders.models import Order
 
 
 class DispatchStrategy(ABC):
     @abstractmethod
-    def select_courier(self, order: Order, couriers: list[User]) -> User | None:
+    def select_courier(self, order: Order, couriers: list[Courier]) -> Courier | None:
         """Choose a courier, or return None if none is eligible."""
         pass
 
@@ -22,7 +22,7 @@ class OrderReadyObserver(ABC):
 
 class CourierAvailabilityObserver(ABC):
     @abstractmethod
-    def on_courier_available(self, courier: User) -> None:
+    def on_courier_available(self, courier: Courier) -> None:
         """React when a courier becomes available."""
         pass
 

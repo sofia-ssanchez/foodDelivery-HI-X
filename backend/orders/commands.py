@@ -10,7 +10,7 @@ from delivery import events
 from delivery.models import DeliveryAssignment
 from delivery.services import invalidate_offers_for_cancelled_order
 from .models import MenuItem, Order, OrderLine, Restaurant
-from .dispatch.events import order_ready_publisher
+from dispatch.events import order_ready_publisher
 
 
 class OrderCommand(ABC):
@@ -176,6 +176,8 @@ class RestaurantOrderCommand(OrderCommand):
 
 
 class CourierOrderCommand(OrderCommand):
+        target_status = Order.Status.DELIVERED
+
 class PlacedQueueCommand(RestaurantOrderCommand):
     def eligible_orders(self, order):
         queue_head = Order.objects.filter(
@@ -364,10 +366,10 @@ RESTAURANT_ORDER_COMMANDS = {
     for command in (
         AcceptOrderCommand,
         RejectOrderCommand,
-        CancelOrderCommand,
+        # CancelOrderCommand,
         StartPreparationCommand,
         MarkOrderReadyCommand,
-        MarkOrderPickedUpCommand,
+        # MarkOrderDeliveredCommand,
     )
 }
 
@@ -375,7 +377,5 @@ RESTAURANT_ORDER_COMMANDS = {
 COURIER_ORDER_COMMANDS = {
     DeliverOrderCommand.target_status: DeliverOrderCommand,
 }
-        AcceptOrderCommand, RejectOrderCommand,
-        StartPreparationCommand, MarkOrderReadyCommand,
-    )
-}
+    
+
