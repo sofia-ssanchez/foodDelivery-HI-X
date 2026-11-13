@@ -91,16 +91,23 @@ def seed_demo_orders():
         ('350 Rue Saint-Paul Est, Montreal', '45.509500', '-73.551500'),
         ('1200 Rue de Bleury, Montreal', '45.505900', '-73.564200'),
     ]
-    scenarios = [('delivered', 3, 0), ('delivered', 4, 1), ('ready', 1, 0),
-                 ('picked_up', 2, 1), ('preparing', 5, 0), ('preparing', 6, 1),
-                 ('placed', 3, 0), ('placed', 4, 1)]
+    # Three orders per restaurant in each kitchen phase, plus delivery history.
+    # Only two couriers exist: reserve one for an offer and one for a pickup.
+    scenarios = [
+        (status, (restaurant_index * 3 + sample) % 6 + 1, restaurant_index)
+        for status in ('delivered', 'ready', 'preparing', 'accepted', 'placed')
+        for restaurant_index in (0, 1)
+        for sample in range(3)
+    ]
+    scenarios.insert(6, ('picked_up', 2, 1))
+    offered_couriers = set()
     stages = ['placed', 'accepted', 'preparing', 'ready', 'picked_up', 'delivered']
     for index, (status, customer_number, restaurant_index) in enumerate(scenarios):
         restaurant = restaurants[restaurant_index]
         courier = couriers[restaurant_index]
         customer = User.objects.get(username=f'customer{customer_number}')
         address, lat, lng = destinations[customer_number - 1]
-        start = timezone.now() - timedelta(minutes=90 - index * 5)
+        start = timezone.now() - timedelta(minutes=60 + (len(scenarios) - index) * 40)
         final_stage = stages.index(status)
         order = Order.objects.create(customer=customer, restaurant=restaurant, status=status,
             delivery_address=address, delivery_latitude=lat, delivery_longitude=lng,
@@ -116,7 +123,10 @@ def seed_demo_orders():
             actor = customer if step == 0 else courier.user if step >= 4 else restaurant.owner
             event = record_order_status_event(order, stages[step - 1] if step else '', stage, actor)
             OrderStatusEvent.objects.filter(pk=event.pk).update(timestamp=start + timedelta(minutes=[0, 3, 5, 15, 20, 30][step]))
-        if final_stage >= 3:
+        should_offer = status == 'ready' and restaurant_index == 0 and courier.pk not in offered_couriers
+        if status in ('picked_up', 'delivered') or should_offer:
+            if should_offer:
+                offered_couriers.add(courier.pk)
             assignment = DeliveryAssignment.objects.create(order=order, courier=courier,
                 status={'ready': 'offered', 'picked_up': 'accepted', 'delivered': 'completed'}[status],
                 accepted_at=start + timedelta(minutes=17) if final_stage >= 4 else None,

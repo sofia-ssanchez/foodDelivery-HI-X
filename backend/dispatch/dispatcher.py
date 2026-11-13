@@ -42,20 +42,51 @@ class Dispatcher(OrderReadyObserver, CourierAvailabilityObserver):
             return
         # Give older waiting orders priority over the newly ready order.
         for waiting_order in OrderQueueService().get_waiting_orders():
-            couriers = self.courier_service.get_idle_couriers()
-            while couriers:
-                courier = self.strategy.select_courier(waiting_order, couriers)
-                if courier is None:
-                    break
-                if self.assign_order_to_courier(waiting_order, courier):
-                    break
-                couriers = [candidate for candidate in couriers if candidate.pk != courier.pk]
-            if not couriers:
+            self.offer_to_nearest(waiting_order)
+
+    def offer_to_nearest(self, order: Order, *, exclude_courier_id=None) -> None:
+        # Reconstruct the current round without deleting decline history. A
+        # repeated courier marks the start of a new round of offers.
+        declined = set()
+        history = DeliveryAssignment.objects.filter(
+            order=order, status=DeliveryAssignment.Status.DECLINED,
+        ).order_by("id").values_list("courier_id", flat=True)
+        for courier_id in history:
+            if courier_id in declined:
+                declined.clear()
+            declined.add(courier_id)
+        available = [courier for courier in self.courier_service.get_idle_couriers()
+                     if courier.pk != exclude_courier_id]
+        couriers = [courier for courier in available if courier.pk not in declined]
+        # Everyone currently eligible declined: begin again, nearest first.
+        if not couriers:
+            couriers = available
+        while couriers:
+            courier = self.strategy.select_courier(order, couriers)
+            if courier is None or self.assign_order_to_courier(order, courier):
                 return
+            couriers = [candidate for candidate in couriers if candidate.pk != courier.pk]
+
+    def on_offer_declined(self, order_id: int, courier_id: int) -> None:
+        order = OrderQueueService().get_waiting_orders().filter(pk=order_id).first()
+        if order is not None:
+            # Try another courier before restarting the declined order's round.
+            self.offer_to_nearest(order, exclude_courier_id=courier_id)
+
+        courier = Courier.objects.filter(pk=courier_id).first()
+        if courier is None or not self.verify_availability(courier):
+            return
+        # Give the declining courier a different job, oldest ready first.
+        for alternative in OrderQueueService().get_waiting_orders().exclude(pk=order_id):
+            if self.assign_order_to_courier(alternative, courier):
+                return
+        # No alternative can be assigned: keep the original retry cycle alive.
+        order = OrderQueueService().get_waiting_orders().filter(pk=order_id).first()
+        if order is not None:
+            self.offer_to_nearest(order)
 
     def on_courier_available(self, courier: Courier) -> None:
         for order in OrderQueueService().get_waiting_orders():
             if not self.verify_availability(courier):
                 return
-            if self.assign_order_to_courier(order, courier):
-                return
+            self.offer_to_nearest(order)

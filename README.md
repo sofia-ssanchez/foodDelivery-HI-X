@@ -87,8 +87,8 @@ Reset replaces current activity with the original demo dataset:
 - The eleven accounts above, with passwords restored to `12345678`.
 - Two open restaurants with saved Montreal coordinates and eight available menu items each.
 - Two couriers with saved locations: `courier1` has an offer; `courier2` is carrying an order.
-- Eight orders: two placed, two preparing, one ready for pickup, one picked up, and two delivered.
-- Customer delivery addresses, coordinates, order status history, and billing entries for the delivered orders.
+- 31 orders: each restaurant has three placed, three accepted, three preparing, three ready for pickup, and three delivered orders. Vegan Corner also has one picked-up order.
+- Customer delivery addresses, coordinates, order status history, and billing entries for the six delivered orders. Extra ready orders wait in the delivery queue; each courier still has at most one active offer or delivery.
 
 Orders, deliveries, refunds, extra accounts, and menu changes made during the
 demo are removed. Reset restores the seeded dataset, **not** the database backup
@@ -101,3 +101,33 @@ preserved, so those accounts can stay logged in.
 Reset requires Django `DEBUG` mode and the local `backend/.demo-enabled` file
 created by `setup_demo`. This file is ignored by Git; run setup on each new
 checkout. Removing the file disables database reset.
+
+
+## Courier dispatch and delivery flow
+
+Ready orders without an active offer or assignment form the delivery queue,
+ordered by ready time (oldest first), then order ID. Dispatch selects the nearest
+eligible idle courier to the restaurant. Couriers who are offline, carrying an
+order, or already have an active offer or assignment are skipped.
+
+Declining an offer immediately offers that order to the next nearest eligible
+courier who has not declined in the current round. Once all currently available
+couriers have declined, a new round starts with the nearest available courier.
+The declining courier is offered a different queued order, oldest ready first,
+before the original order can return to them. If no alternative can be assigned,
+the original order may be offered again. Decline history is preserved.
+If no courier is available, the order stays queued
+until dispatch is triggered by courier availability or another order becoming ready.
+
+After **Confirm delivered**, the courier becomes idle and dispatch immediately
+checks the waiting queue. The dashboard switches to **Offers** and refreshes so
+the courier can accept their next offer. Nearest-courier selection still applies;
+completing a delivery does not bypass that rule. Each courier can have only one
+active offer or delivery at a time.
+
+See [DEMO.md](DEMO.md) for a short walkthrough using the seeded orders.
+
+Going offline before pickup releases any accepted delivery assignment. The order
+stays ready and returns to dispatch for another available courier; if none is
+available, it waits in the queue. The old assignment remains in history as
+cancelled. Going offline while carrying food is blocked until delivery is confirmed.
