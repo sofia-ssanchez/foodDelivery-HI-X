@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ComponentProps } from "react";
+import { API_BASE } from "@/lib/api";
 
 export default function SignupPage() {
   const [username, setUsername] = useState("");
@@ -21,7 +22,7 @@ export default function SignupPage() {
 
     try {
       const response = await fetch(
-        "http://localhost:8000/api/accounts/signup/",
+        `${API_BASE}/api/accounts/signup/`,
         {
           method: "POST",
           headers: {
