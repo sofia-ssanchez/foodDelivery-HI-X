@@ -9,12 +9,7 @@ from urllib.request import Request, urlopen
 from django.conf import settings
 from django.core import signing
 from django.core.cache import cache
-from rest_framework import serializers
 from rest_framework.exceptions import APIException, ValidationError
-from rest_framework.response import Response
-from rest_framework.views import APIView
-
-from guards.permissions import RequireCustomer
 
 SALT = "orders.checkout-address"
 
@@ -22,10 +17,6 @@ SALT = "orders.checkout-address"
 class AddressLookupUnavailable(APIException):
     status_code = 503
     default_detail = "Address lookup is temporarily unavailable. Please try again."
-
-
-class AddressQuerySerializer(serializers.Serializer):
-    address = serializers.CharField(min_length=5, max_length=250)
 
 
 def search_addresses(query):
@@ -77,19 +68,3 @@ def read_checkout_address(token, customer_id):
         return location
     except (signing.BadSignature, KeyError, ValueError, TypeError):
         raise ValidationError({"detail": "Find and select your delivery address at checkout before placing the order."}) from None
-
-
-class AddressLookupView(APIView):
-    permission_classes = [RequireCustomer]
-
-    def post(self, request):
-        serializer = AddressQuerySerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        results = search_addresses(serializer.validated_data["address"])
-        response = Response({"results": [
-            {"address": result["address"], "token": signing.dumps(
-                {**result, "customer_id": request.user.id}, salt=SALT
-            )} for result in results
-        ]})
-        response["Cache-Control"] = "no-store"
-        return response

@@ -1,8 +1,6 @@
 """Role-scoped map data; private locations are filtered before serialization."""
-from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
-from rest_framework import serializers
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -12,11 +10,6 @@ from guards.permissions import RequireAuth
 from .models import Order, Restaurant
 
 ACTIVE_STATUSES = ("placed", "accepted", "preparing", "ready", "picked_up")
-
-
-class LocationSerializer(serializers.Serializer):
-    latitude = serializers.DecimalField(max_digits=9, decimal_places=6, min_value=-90, max_value=90)
-    longitude = serializers.DecimalField(max_digits=9, decimal_places=6, min_value=-180, max_value=180)
 
 
 class DashboardMapView(APIView):
@@ -82,18 +75,3 @@ class DashboardMapView(APIView):
     @staticmethod
     def point(identifier, label, kind, latitude, longitude, detail):
         return {"id": identifier, "label": label, "kind": kind, "latitude": str(latitude), "longitude": str(longitude), "detail": detail}
-
-
-class MapLocationView(APIView):
-    permission_classes = [RequireAuth]
-
-    @transaction.atomic
-    def patch(self, request):
-        user = request.user
-        if user.role != "courier":
-            raise PermissionDenied("Only couriers can update their map position. Customers enter an address at checkout.")
-        serializer = LocationSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        courier = get_object_or_404(Courier, user=user)
-        Courier.objects.filter(pk=courier.pk).update(**serializer.validated_data)
-        return Response({"detail": "Location saved."})

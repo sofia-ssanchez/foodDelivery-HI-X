@@ -1,11 +1,12 @@
 from django.urls import path
-from .address_lookup import AddressLookupView
-from .map_views import DashboardMapView, MapLocationView
+from .map_views import DashboardMapView
 from .dashboard_views import (
     CustomerOrderListView, OperatorOverviewView, RestaurantListView,
     RestaurantMenuView, RestaurantOrderBoardView, RestaurantPauseActivityView,
 )
 from .views import (
+    AddressLookupView,
+    MapLocationView,
     CustomerCancelOrderView,
     OperatorCancelOrderView,
     PlaceOrderView,

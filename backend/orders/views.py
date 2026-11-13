@@ -1,8 +1,16 @@
+"""Order creation and status-changing views."""
+
+from django.core import signing
+from django.db import transaction
+from django.shortcuts import get_object_or_404
 from rest_framework import generics, serializers, status
+from rest_framework.views import APIView
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
+from delivery.models import Courier
 from guards.permissions import RequireAuth, RequireCustomer, RequireOperator, RequireRestaurantUser
+from .address_lookup import SALT, search_addresses
 from .commands import (
     CustomerCancelOrderCommand,
     OperatorCancelOrderCommand,
@@ -11,6 +19,8 @@ from .commands import (
 )
 from .models import Order, OrderStatusEvent
 from .serializers import (
+    AddressQuerySerializer,
+    LocationSerializer,
     OperatorCancelOrderSerializer,
     PlaceOrderSerializer,
     RestaurantOrderSerializer,
@@ -170,3 +180,34 @@ class OperatorCancelOrderView(generics.GenericAPIView):
         ).execute()
         return Response({"id": order.id, "status": order.status})
 
+
+
+class AddressLookupView(APIView):
+    permission_classes = [RequireCustomer]
+
+    def post(self, request):
+        serializer = AddressQuerySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        results = search_addresses(serializer.validated_data["address"])
+        response = Response({"results": [
+            {"address": result["address"], "token": signing.dumps(
+                {**result, "customer_id": request.user.id}, salt=SALT
+            )} for result in results
+        ]})
+        response["Cache-Control"] = "no-store"
+        return response
+
+
+class MapLocationView(APIView):
+    permission_classes = [RequireAuth]
+
+    @transaction.atomic
+    def patch(self, request):
+        user = request.user
+        if user.role != "courier":
+            raise PermissionDenied("Only couriers can update their map position. Customers enter an address at checkout.")
+        serializer = LocationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        courier = get_object_or_404(Courier, user=user)
+        Courier.objects.filter(pk=courier.pk).update(**serializer.validated_data)
+        return Response({"detail": "Location saved."})

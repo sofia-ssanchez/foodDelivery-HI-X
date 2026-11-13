@@ -84,3 +84,12 @@ class OperatorCancelOrderSerializer(serializers.Serializer):
             Order.Status.READY,
         )
     )
+
+
+class AddressQuerySerializer(serializers.Serializer):
+    address = serializers.CharField(min_length=5, max_length=250)
+
+
+class LocationSerializer(serializers.Serializer):
+    latitude = serializers.DecimalField(max_digits=9, decimal_places=6, min_value=-90, max_value=90)
+    longitude = serializers.DecimalField(max_digits=9, decimal_places=6, min_value=-180, max_value=180)
