@@ -63,6 +63,10 @@ All demo accounts use the password **`12345678`**.
 | `courier2` | `12345678` | Courier — starts carrying an order |
 | `restaurant1` | `12345678` | Green Garden owner |
 | `restaurant2` | `12345678` | Vegan Corner owner |
+| `restaurant3` | `12345678` | Plateau Pizza owner |
+| `restaurant4` | `12345678` | Verdun Bowl owner |
+| `restaurant5` | `12345678` | Rosemont Tacos owner |
+| `restaurant6` | `12345678` | Lachine Bistro owner |
 | `operator1` | `12345678` | Operator |
 
 To initialize the demo on a new checkout, run these commands from `backend`
@@ -84,11 +88,11 @@ then confirm. Any signed-in demo account can use this button.
 
 Reset replaces current activity with the original demo dataset:
 
-- The eleven accounts above, with passwords restored to `12345678`.
-- Two open restaurants with saved Montreal coordinates and eight available menu items each.
+- The fifteen accounts above, with passwords restored to `12345678`.
+- Six restaurants (five open, Lachine Bistro paused) with saved Montreal coordinates and eight available menu items each.
 - Two couriers with saved locations: `courier1` has an offer; `courier2` is carrying an order.
-- 31 orders: each restaurant has three placed, three accepted, three preparing, three ready for pickup, and three delivered orders. Vegan Corner also has one picked-up order.
-- Customer delivery addresses, coordinates, order status history, and billing entries for the six delivered orders. Extra ready orders wait in the delivery queue; each courier still has at most one active offer or delivery.
+- 74 orders: varied placed and accepted queues, plus three preparing, three ready for pickup, and three delivered orders per restaurant. Vegan Corner also has one picked-up order.
+- Customer delivery addresses, coordinates, order status history, and billing entries for the 18 delivered orders. Seventeen ready orders wait in the delivery queue; each courier still has at most one active offer or delivery.
 
 Orders, deliveries, refunds, extra accounts, and menu changes made during the
 demo are removed. Reset restores the seeded dataset, **not** the database backup
@@ -131,3 +135,31 @@ Going offline before pickup releases any accepted delivery assignment. The order
 stays ready and returns to dispatch for another available courier; if none is
 available, it waits in the queue. The old assignment remains in history as
 cancelled. Going offline while carrying food is blocked until delivery is confirmed.
+
+## Dashboard map queues
+
+Restaurant markers show queued workload (placed + accepted orders): green for
+0–2, amber for 3–5, red for 6+, and always red when paused. Click a marker for
+queued/preparing/ready counts, active order states, the menu, and permitted quick
+actions. Optional labels show restaurant names and queue counts. Customer active
+orders use a purple marker outline without overriding the queue color.
+
+Owners see and manage their own queues, operators can inspect all restaurant
+queues, customers see their own orders, and couriers see their assigned delivery.
+See [the map demo instructions](DEMO.md#restaurant-map-queues).
+
+
+### Seeded restaurant workload
+
+| Restaurant | Status | Placed | Accepted | Queued total | Marker |
+| --- | --- | --- | --- | --- | --- |
+| Green Garden | Open | 1 | 1 | 2 | Green |
+| Vegan Corner | Open | 2 | 2 | 4 | Amber |
+| Plateau Pizza | Open | 4 | 3 | 7 | Red |
+| Verdun Bowl | Open | 0 | 0 | 0 | Green |
+| Rosemont Tacos | Open | 3 | 2 | 5 | Amber |
+| Lachine Bistro | Paused | 1 | 0 | 1 | Red (paused override) |
+
+Queued counts are placed + accepted. Resume Lachine Bistro from its owner
+dashboard to see its marker change from red to green. Reset restores these counts
+and pauses Lachine Bistro again.

@@ -22,7 +22,7 @@ def reset_demo():
                   OrderStatusEvent, OrderLine, Order, MenuItem, Restaurant, Courier):
         model.objects.all().delete()
     User = get_user_model()
-    names = ['customer1', 'customer2', 'customer3', 'customer4', 'customer5', 'customer6', 'courier1', 'courier2', 'restaurant1', 'restaurant2', 'operator1']
+    names = ['customer1', 'customer2', 'customer3', 'customer4', 'customer5', 'customer6', 'courier1', 'courier2', 'restaurant1', 'restaurant2', 'restaurant3', 'restaurant4', 'restaurant5', 'restaurant6', 'operator1']
     User.objects.exclude(username__in=names).delete()
     users = {}
     for name in names:
@@ -52,15 +52,36 @@ def reset_demo():
             ('Chickpea Curry', '15.00'), ('Tempeh Sandwich', '11.50'),
             ('Garden Salad', '8.00'), ('Roasted Potatoes', '5.00'),
             ('Vegan Cheesecake', '6.50'), ('Lemonade', '4.00')]),
+        ('Plateau Pizza', '45.530500', '-73.583200', [
+            ('Margherita Pizza', '16.00'), ('Mushroom Pizza', '18.00'),
+            ('Pesto Pizza', '18.50'), ('Roasted Pepper Pizza', '17.50'),
+            ('Garlic Bread', '5.50'), ('Caesar Salad', '8.00'),
+            ('Tiramisu', '7.00'), ('Sparkling Lemonade', '4.50')]),
+        ('Verdun Bowl', '45.459000', '-73.572400', [
+            ('Teriyaki Tofu Bowl', '15.00'), ('Sesame Noodle Bowl', '14.00'),
+            ('Kimchi Rice Bowl', '15.50'), ('Miso Mushroom Bowl', '16.00'),
+            ('Edamame', '5.00'), ('Vegetable Dumplings', '7.50'),
+            ('Mango Pudding', '6.00'), ('Iced Green Tea', '4.00')]),
+        ('Rosemont Tacos', '45.550000', '-73.579000', [
+            ('Black Bean Tacos', '12.00'), ('Mushroom Tacos', '13.50'),
+            ('Roasted Corn Burrito', '14.00'), ('Sweet Potato Quesadilla', '13.00'),
+            ('Chips and Guacamole', '7.00'), ('Mexican Rice', '5.00'),
+            ('Churros', '6.00'), ('Hibiscus Iced Tea', '4.50')]),
+        ('Lachine Bistro', '45.433000', '-73.677000', [
+            ('Lentil Shepherds Pie', '17.00'), ('Vegetable Pot Pie', '16.50'),
+            ('Grilled Vegetable Sandwich', '13.00'), ('Herb Gnocchi', '18.00'),
+            ('Tomato Soup', '7.00'), ('Bistro Fries', '5.50'),
+            ('Apple Crumble', '7.00'), ('House Iced Tea', '4.00')]),
     ]
     for index, (name, lat, lng, menu) in enumerate(menus, 1):
         restaurant = Restaurant.objects.create(name=name, owner=users[f'restaurant{index}'],
-            status='open', latitude=lat, longitude=lng)
+            status='paused' if index == 6 else 'open', latitude=lat, longitude=lng)
         MenuItem.objects.bulk_create([MenuItem(restaurant=restaurant, name=item, price=price,
             status='available') for item, price in menu])
-        Courier.objects.update_or_create(user=users[f'courier{index}'], defaults={'status': 'idle', 'latitude': lat, 'longitude': lng})
+        if index <= 2:
+            Courier.objects.update_or_create(user=users[f'courier{index}'], defaults={'status': 'idle', 'latitude': lat, 'longitude': lng})
     count = seed_demo_orders()
-    return {'detail': 'Demo reset complete.', 'restaurants': 2, 'couriers': 2, 'customers': 6, 'orders': count}
+    return {'detail': 'Demo reset complete.', 'restaurants': len(menus), 'couriers': 2, 'customers': 6, 'orders': count}
 
 
 @transaction.atomic
@@ -79,7 +100,7 @@ def seed_demo_orders():
         if created:
             user.set_password('12345678')
             user.save()
-    restaurants = [Restaurant.objects.get(owner__username=f'restaurant{i}') for i in (1, 2)]
+    restaurants = [Restaurant.objects.get(owner__username=f'restaurant{i}') for i in range(1, 7)]
     couriers = [Courier.objects.get(user__username=f'courier{i}') for i in (1, 2)]
     if DeliveryAssignment.objects.filter(courier__in=couriers, status__in=['offered', 'accepted']).exists():
         raise ValueError('Demo couriers already have active deliveries; use Reset demo to restore the seeded baseline.')
@@ -91,20 +112,25 @@ def seed_demo_orders():
         ('350 Rue Saint-Paul Est, Montreal', '45.509500', '-73.551500'),
         ('1200 Rue de Bleury, Montreal', '45.505900', '-73.564200'),
     ]
-    # Three orders per restaurant in each kitchen phase, plus delivery history.
+    # Vary placed + accepted counts across both sides of each map threshold.
+    queued_counts = [(1, 1), (2, 2), (4, 3), (0, 0), (3, 2), (1, 0)]
+    # Keep preparation, pickup queues, and completed history available to demo.
     # Only two couriers exist: reserve one for an offer and one for a pickup.
     scenarios = [
         (status, (restaurant_index * 3 + sample) % 6 + 1, restaurant_index)
         for status in ('delivered', 'ready', 'preparing', 'accepted', 'placed')
-        for restaurant_index in (0, 1)
-        for sample in range(3)
+        for restaurant_index in range(len(restaurants))
+        for sample in range(
+            queued_counts[restaurant_index][0] if status == 'placed' else
+            queued_counts[restaurant_index][1] if status == 'accepted' else 3
+        )
     ]
-    scenarios.insert(6, ('picked_up', 2, 1))
+    scenarios.insert(3 * len(restaurants), ('picked_up', 2, 1))
     offered_couriers = set()
     stages = ['placed', 'accepted', 'preparing', 'ready', 'picked_up', 'delivered']
     for index, (status, customer_number, restaurant_index) in enumerate(scenarios):
         restaurant = restaurants[restaurant_index]
-        courier = couriers[restaurant_index]
+        courier = couriers[restaurant_index % len(couriers)]
         customer = User.objects.get(username=f'customer{customer_number}')
         address, lat, lng = destinations[customer_number - 1]
         start = timezone.now() - timedelta(minutes=60 + (len(scenarios) - index) * 40)
