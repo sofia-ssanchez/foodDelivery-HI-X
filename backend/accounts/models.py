@@ -10,6 +10,9 @@ class User(AbstractUser):
         COURIER = "courier", "Courier"
         OPERATOR = "operator", "Operator"
 
+    delivery_address = models.CharField(max_length=600, blank=True)
+    delivery_unit = models.CharField(max_length=80, blank=True)
+
     delivery_latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     delivery_longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
 

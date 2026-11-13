@@ -102,7 +102,7 @@ export default function CourierDashboard() {
     const messages = { accept: "accepted", decline: "declined", pickup: "picked up", deliver: "delivered" };
     void mutate(`/api/delivery/${resource}/${order.id}/${action}/`, "POST", undefined,
       `Order #${order.order_id} ${messages[action]}.`,
-      action === "accept" || action === "pickup" ? "My deliveries" : "History", order.id);
+      action === "accept" || action === "pickup" ? "My deliveries" : "Offers", order.id);
   }
 
   const groups: Record<Tab, Delivery[]> = {

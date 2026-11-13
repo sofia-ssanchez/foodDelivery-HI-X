@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from pricing.services import record_order_ledger
+from orders.demo_addresses import seed_customer_addresses
 from orders.models import Order, OrderLine, Restaurant, MenuItem
 import os
 
@@ -58,6 +59,11 @@ class Command(BaseCommand):
             self.style.SUCCESS("Test accounts are ready!")
         )
 
+
+        seed_customer_addresses(
+            User.objects.filter(username__in=[name for name, role in test_accounts if role == "customer"]).order_by("username"),
+            overwrite=restore_baseline,
+        )
 
         # Shared admin account
         admin_password = os.environ.get("ADMIN_PASSWORD")
@@ -260,6 +266,13 @@ class Command(BaseCommand):
                 self.stdout.write(
                     f"Order already exists: #{order.id}"
                 )
+
+            if created or restore_baseline or not order.delivery_address:
+                order.delivery_address = customer.delivery_address
+                order.delivery_unit = customer.delivery_unit
+                order.delivery_latitude = customer.delivery_latitude
+                order.delivery_longitude = customer.delivery_longitude
+                order.save(update_fields=["delivery_address", "delivery_unit", "delivery_latitude", "delivery_longitude"])
 
             # Create the order lines if they don't already exist
             for item_name, quantity in data["items"]:

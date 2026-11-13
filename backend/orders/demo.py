@@ -6,6 +6,7 @@ from rest_framework.exceptions import PermissionDenied
 
 from delivery.models import Courier, DeliveryAssignment
 from pricing.models import RefundLedgerEntry, RefundRequest, OrderLedger
+from .demo_addresses import seed_customer_addresses
 from .models import Order, OrderLine, OrderStatusEvent, Restaurant, MenuItem
 
 
@@ -22,7 +23,7 @@ def reset_demo():
                   OrderStatusEvent, OrderLine, Order, MenuItem, Restaurant, Courier):
         model.objects.all().delete()
     User = get_user_model()
-    names = ['customer1', 'customer2', 'customer3', 'customer4', 'customer5', 'customer6', 'courier1', 'courier2', 'restaurant1', 'restaurant2', 'operator1']
+    names = ['customer1', 'customer2', 'customer3', 'customer4', 'customer5', 'customer6', 'courier1', 'courier2', 'restaurant1', 'restaurant2', 'restaurant3', 'restaurant4', 'restaurant5', 'restaurant6', 'operator1']
     User.objects.exclude(username__in=names).delete()
     users = {}
     for name in names:
@@ -61,6 +62,36 @@ def reset_demo():
         Courier.objects.update_or_create(user=users[f'courier{index}'], defaults={'status': 'idle', 'latitude': lat, 'longitude': lng})
     count = seed_demo_orders()
     return {'detail': 'Demo reset complete.', 'restaurants': 2, 'couriers': 2, 'customers': 6, 'orders': count}
+        ('Plateau Pizza', '45.530500', '-73.583200', [
+            ('Margherita Pizza', '16.00'), ('Mushroom Pizza', '18.00'),
+            ('Pesto Pizza', '18.50'), ('Roasted Pepper Pizza', '17.50'),
+            ('Garlic Bread', '5.50'), ('Caesar Salad', '8.00'),
+            ('Tiramisu', '7.00'), ('Sparkling Lemonade', '4.50')]),
+        ('Verdun Bowl', '45.459000', '-73.572400', [
+            ('Teriyaki Tofu Bowl', '15.00'), ('Sesame Noodle Bowl', '14.00'),
+            ('Kimchi Rice Bowl', '15.50'), ('Miso Mushroom Bowl', '16.00'),
+            ('Edamame', '5.00'), ('Vegetable Dumplings', '7.50'),
+            ('Mango Pudding', '6.00'), ('Iced Green Tea', '4.00')]),
+        ('Rosemont Tacos', '45.550000', '-73.579000', [
+            ('Black Bean Tacos', '12.00'), ('Mushroom Tacos', '13.50'),
+            ('Roasted Corn Burrito', '14.00'), ('Sweet Potato Quesadilla', '13.00'),
+            ('Chips and Guacamole', '7.00'), ('Mexican Rice', '5.00'),
+            ('Churros', '6.00'), ('Hibiscus Iced Tea', '4.50')]),
+        ('Lachine Bistro', '45.433000', '-73.677000', [
+            ('Lentil Shepherds Pie', '17.00'), ('Vegetable Pot Pie', '16.50'),
+            ('Grilled Vegetable Sandwich', '13.00'), ('Herb Gnocchi', '18.00'),
+            ('Tomato Soup', '7.00'), ('Bistro Fries', '5.50'),
+            ('Apple Crumble', '7.00'), ('House Iced Tea', '4.00')]),
+    ]
+    for index, (name, lat, lng, menu) in enumerate(menus, 1):
+        restaurant = Restaurant.objects.create(name=name, owner=users[f'restaurant{index}'],
+            status='paused' if index == 6 else 'open', latitude=lat, longitude=lng)
+        MenuItem.objects.bulk_create([MenuItem(restaurant=restaurant, name=item, price=price,
+            status='available') for item, price in menu])
+        if index <= 2:
+            Courier.objects.update_or_create(user=users[f'courier{index}'], defaults={'status': 'idle', 'latitude': lat, 'longitude': lng})
+    count = seed_demo_orders()
+    return {'detail': 'Demo reset complete.', 'restaurants': len(menus), 'couriers': 2, 'customers': 6, 'orders': count}
 
 
 @transaction.atomic
@@ -101,6 +132,38 @@ def seed_demo_orders():
         customer = User.objects.get(username=f'customer{customer_number}')
         address, lat, lng = destinations[customer_number - 1]
         start = timezone.now() - timedelta(minutes=90 - index * 5)
+    restaurants = [Restaurant.objects.get(owner__username=f'restaurant{i}') for i in range(1, 7)]
+    couriers = [Courier.objects.get(user__username=f'courier{i}') for i in (1, 2)]
+    if DeliveryAssignment.objects.filter(courier__in=couriers, status__in=['offered', 'accepted']).exists():
+        raise ValueError('Demo couriers already have active deliveries; use Reset demo to restore the seeded baseline.')
+    seed_customer_addresses(User.objects.filter(role="customer").order_by("username"), overwrite=True)
+    # Vary placed + accepted counts across both sides of each map threshold.
+    queued_counts = [(1, 1), (2, 2), (4, 3), (0, 0), (3, 2), (1, 0)]
+    # Vary the rest of the live workload too, while retaining delivery history.
+    preparing_counts = [0, 1, 3, 0, 2, 0]
+    ready_counts = [1, 1, 3, 0, 2, 0]
+    # Keep preparation, pickup queues, and completed history available to demo.
+    # Only two couriers exist: reserve one for an offer and one for a pickup.
+    scenarios = [
+        (status, (restaurant_index * 3 + sample) % 6 + 1, restaurant_index)
+        for status in ('delivered', 'ready', 'preparing', 'accepted', 'placed')
+        for restaurant_index in range(len(restaurants))
+        for sample in range(
+            queued_counts[restaurant_index][0] if status == 'placed' else
+            queued_counts[restaurant_index][1] if status == 'accepted' else
+            preparing_counts[restaurant_index] if status == 'preparing' else
+            ready_counts[restaurant_index] if status == 'ready' else 3
+        )
+    ]
+    scenarios.insert(3 * len(restaurants), ('picked_up', 2, 1))
+    offered_couriers = set()
+    stages = ['placed', 'accepted', 'preparing', 'ready', 'picked_up', 'delivered']
+    for index, (status, customer_number, restaurant_index) in enumerate(scenarios):
+        restaurant = restaurants[restaurant_index]
+        courier = couriers[restaurant_index % len(couriers)]
+        customer = User.objects.get(username=f'customer{customer_number}')
+        address, lat, lng = customer.delivery_address, customer.delivery_latitude, customer.delivery_longitude
+        start = timezone.now() - timedelta(minutes=60 + (len(scenarios) - index) * 40)
         final_stage = stages.index(status)
         order = Order.objects.create(customer=customer, restaurant=restaurant, status=status,
             delivery_address=address, delivery_latitude=lat, delivery_longitude=lng,
@@ -117,6 +180,10 @@ def seed_demo_orders():
             event = record_order_status_event(order, stages[step - 1] if step else '', stage, actor)
             OrderStatusEvent.objects.filter(pk=event.pk).update(timestamp=start + timedelta(minutes=[0, 3, 5, 15, 20, 30][step]))
         if final_stage >= 3:
+        should_offer = status == 'ready' and restaurant_index == 0 and courier.pk not in offered_couriers
+        if status in ('picked_up', 'delivered') or should_offer:
+            if should_offer:
+                offered_couriers.add(courier.pk)
             assignment = DeliveryAssignment.objects.create(order=order, courier=courier,
                 status={'ready': 'offered', 'picked_up': 'accepted', 'delivered': 'completed'}[status],
                 accepted_at=start + timedelta(minutes=17) if final_stage >= 4 else None,
