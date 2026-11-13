@@ -8,9 +8,10 @@ from accounts.models import User
 from orders.commands import MarkOrderReadyCommand
 from orders.models import DeliveryAssignment, Order, Restaurant
 from .services import OrderQueueService
+from .events import courier_available_publisher
 
 
-class DispatchPipelineTests(TestCase):
+class onOrderPipelineTests(TestCase):
     def test_ready_order_is_assigned_to_nearest_courier(self):
         owner = User.objects.create(
             username="restaurant", role=User.Role.RESTAURANT,
@@ -89,3 +90,66 @@ class OrderQueueTests(TestCase):
 
         self.assertEqual(list(OrderQueueService().get_waiting_orders()), [first, second, later])
         print("PASS: Waiting queue uses ready time, ID tiebreak, and excludes active assignments.", flush=True)
+
+
+class CourierAvailabilityPipelineTests(TestCase):
+    def setUp(self):
+        self.customer = User.objects.create(username="observer-customer")
+        owner = User.objects.create(username="observer-owner", role=User.Role.RESTAURANT)
+        self.restaurant = Restaurant.objects.create(
+            name="Observer Restaurant", owner=owner, latitude=0, longitude=0,
+        )
+        self.courier = User.objects.create(
+            username="observer-courier", role=User.Role.COURIER,
+            is_available=True, latitude=0, longitude=1,
+        )
+
+    def make_waiting_order(self, ready_at):
+        return Order.objects.create(
+            customer=self.customer, restaurant=self.restaurant,
+            status=Order.Status.READY, ready_at=ready_at,
+        )
+
+    def test_notification_assigns_oldest_and_leaves_remaining_order_queued(self):
+        now = timezone.now()
+        # Reverse creation order so the test distinguishes ready time from ID.
+        newer = self.make_waiting_order(now)
+        oldest = self.make_waiting_order(now - timedelta(minutes=5))
+        print("\nRUN: Courier availability publisher → Dispatcher → oldest waiting order.", flush=True)
+
+        courier_available_publisher.notify(self.courier)
+
+        assignment = DeliveryAssignment.objects.get(courier=self.courier, is_active=True)
+        self.assertEqual(assignment.order, oldest)
+        self.assertEqual(list(OrderQueueService().get_waiting_orders()), [newer])
+        oldest.refresh_from_db()
+        newer.refresh_from_db()
+        self.assertEqual(oldest.status, Order.Status.READY)
+        self.assertEqual(newer.ready_at, now)
+        print("PASS: Oldest-ready order assigned; remaining order retains its queue position.", flush=True)
+
+        courier_available_publisher.notify(self.courier)
+        self.assertEqual(DeliveryAssignment.objects.filter(courier=self.courier).count(), 1)
+        self.assertEqual(list(OrderQueueService().get_waiting_orders()), [newer])
+        print("PASS: Repeated notification cannot give an occupied courier another assignment.", flush=True)
+
+    def test_unavailable_courier_leaves_order_waiting(self):
+        order = self.make_waiting_order(timezone.now())
+        self.courier.is_available = False
+        self.courier.save(update_fields=["is_available"])
+
+        courier_available_publisher.notify(self.courier)
+
+        self.assertFalse(DeliveryAssignment.objects.exists())
+        self.assertEqual(list(OrderQueueService().get_waiting_orders()), [order])
+        print("PASS: Unavailable courier receives no assignment; order remains queued.", flush=True)
+
+    def test_empty_queue_creates_no_assignment(self):
+        courier_available_publisher.notify(self.courier)
+
+        self.assertFalse(DeliveryAssignment.objects.exists())
+        self.assertFalse(OrderQueueService().get_waiting_orders().exists())
+        print("PASS: Available-courier notification handles an empty queue without error.", flush=True)
+
+    def tearDown(self):
+        print("CLEANUP: Django will roll back this test's records in the separate test database.", flush=True)
