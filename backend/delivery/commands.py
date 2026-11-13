@@ -52,7 +52,7 @@ def _transition_courier(courier, target_status):
     courier.status = target_status
 
 
-def _transition_order(order, target_status):
+def _transition_order(order, target_status, **timestamps):
     previous_status = order.status
     try:
         order.transition(target_status)
@@ -60,7 +60,7 @@ def _transition_order(order, target_status):
         raise DeliveryConflict(str(exc)) from exc
     if not Order.objects.filter(
         pk=order.pk, status=previous_status
-    ).update(status=order.status):
+    ).update(status=order.status, **timestamps):
         raise DeliveryConflict()
 
 
@@ -273,9 +273,8 @@ class ConfirmPickupCommand(AssignmentCommand):
         order = self.get_order(assignment)
         if courier.status != Courier.Status.ASSIGNED or assignment.picked_up_at:
             raise DeliveryConflict("This delivery is not awaiting pickup.")
-        _transition_order(order, Order.Status.PICKED_UP)
-
         picked_up_at = timezone.now()
+        _transition_order(order, Order.Status.PICKED_UP, picked_up_at=picked_up_at)
         if not DeliveryAssignment.objects.filter(
             pk=assignment.pk,
             courier=courier,
@@ -295,16 +294,14 @@ class ConfirmDeliveryCommand(AssignmentCommand):
         courier = self.get_courier()
         assignment = self.get_assignment(courier, DeliveryAssignment.Status.ACCEPTED)
         order = self.get_order(assignment)
-        if courier.status != Courier.Status.CARRYING or not assignment.picked_up_at:
+        if courier.status != Courier.Status.CARRYING or order.status != Order.Status.PICKED_UP:
             raise DeliveryConflict("Pickup must be confirmed before delivery.")
-        _transition_order(order, Order.Status.DELIVERED)
-
         delivered_at = timezone.now()
+        _transition_order(order, Order.Status.DELIVERED, delivered_at=delivered_at)
         if not DeliveryAssignment.objects.filter(
             pk=assignment.pk,
             courier=courier,
             status=DeliveryAssignment.Status.ACCEPTED,
-            picked_up_at__isnull=False,
         ).update(
             status=DeliveryAssignment.Status.COMPLETED,
             delivered_at=delivered_at,
