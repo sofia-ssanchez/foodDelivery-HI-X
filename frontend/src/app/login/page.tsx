@@ -4,6 +4,7 @@
 import { useState } from "react";
 import type { ComponentProps } from "react";
 import { useRouter } from "next/navigation";
+import { API_BASE } from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -23,7 +24,7 @@ export default function LoginPage() {
 
     try {
       const response = await fetch(
-        "http://localhost:8000/api/accounts/login/",
+        `${API_BASE}/api/accounts/login/`,
         {
           method: "POST",
           credentials: "include",

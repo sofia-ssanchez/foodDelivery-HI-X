@@ -71,10 +71,6 @@ class RejectedState(OrderState):
     status = "rejected"
 
     def transition(self, targetState):
-        if targetState == "partially_refunded":
-            return PartiallyRefundedState()
-        elif targetState == "refunded":
-            return RefundedState()
         raise ValueError(f"Invalid transition from Rejected to {targetState}")
 
 
@@ -82,10 +78,6 @@ class CancelledState(OrderState):
     status = "cancelled"
 
     def transition(self, targetState):
-        if targetState == "partially_refunded":
-            return PartiallyRefundedState()
-        elif targetState == "refunded":
-            return RefundedState()
         raise ValueError(f"Invalid transition from Cancelled to {targetState}")
 
 
