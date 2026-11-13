@@ -1,166 +1,239 @@
-# foodDelivery
+# Five Leaf Clover Food Delivery
 
-To get backend running cd into backend then run
+This project has a Django backend and a Next.js frontend. You can run them
+locally in two terminals or run both together with Docker Compose.
 
-To set up virtual environment:
-python3 -m venv venv
+## Getting started with Docker
+This is the easiest way to start the complete application. You need Docker
+Desktop (or Docker Engine with the Compose plugin) and an internet connection
+the first time you build the images.
 
-To activate virtual environment:
-source venv/bin/activate
+Docker uses its own persistent SQLite database volume. It does not use your
+local `backend/db.sqlite3` file or your local Python virtual environment.
 
-To install requiremnts:
-python -m pip install -r requirements.txt
+Open a terminal at the repository root (the folder containing `compose.yaml`)
+and run:
 
-To apply migrations:
-python3 manage.py migrate
-
-To start the backend:
-python3 manage.py runserver
-
-
-
-To start the frontend:
-cd frontend
-npm run dev
-### Testing multiple accounts locally
-
-Run up to eight frontend servers in separate terminals from `frontend`, with
-one shared backend on port 8000:
-
-| Command | URL |
-| --- | --- |
-| `npm run dev` | http://localhost:3000 |
-| `npm run dev:second` | http://localhost:3001 |
-| `npm run dev:third` | http://localhost:3002 |
-| `npm run dev:fourth` | http://localhost:3003 |
-| `npm run dev:fifth` | http://localhost:3004 |
-| `npm run dev:sixth` | http://localhost:3005 |
-| `npm run dev:seventh` | http://localhost:3006 |
-| `npm run dev:eighth` | http://localhost:3007 |
-
-Each server uses a separate Next.js output directory. Sign in to a different
-account on each port in the same browser. Restart the backend after pulling
-these settings changes.
-In Django DEBUG mode, trusted localhost origins use separate HttpOnly access
-and refresh cookie names. Logging in, refreshing, or logging out on one port
-leaves the other ports' sessions intact. Tabs on the same port share a login.
-After upgrading from the shared-cookie setup, sign in once on each port.
-The CSRF cookie remains host-wide and contains no account identity.
-
-## Demo accounts
-
-All demo accounts use the password **`12345678`**.
-
-| Username | Password | Role / restaurant |
-| --- | --- | --- |
-| `customer1` | `12345678` | Customer |
-| `customer2` | `12345678` | Customer |
-| `customer3` | `12345678` | Customer |
-| `customer4` | `12345678` | Customer |
-| `customer5` | `12345678` | Customer |
-| `customer6` | `12345678` | Customer |
-| `courier1` | `12345678` | Courier — starts with an offer to accept |
-| `courier2` | `12345678` | Courier — starts carrying an order |
-| `restaurant1` | `12345678` | Green Garden owner |
-| `restaurant2` | `12345678` | Vegan Corner owner |
-| `restaurant3` | `12345678` | Plateau Pizza owner |
-| `restaurant4` | `12345678` | Verdun Bowl owner |
-| `restaurant5` | `12345678` | Rosemont Tacos owner |
-| `restaurant6` | `12345678` | Lachine Bistro owner |
-| `operator1` | `12345678` | Operator |
-
-To initialize the demo on a new checkout, run these commands from `backend`
-with the virtual environment activated:
-
-```sh
-python manage.py migrate
-python manage.py setup_demo
+```bash
+cp .env.example .env
+docker compose up --build
 ```
 
-`setup_demo` replaces the current database contents with the demo dataset.
-Before doing so, it saves a timestamped SQLite backup in `/tmp` and prints its
-location. These credentials are for local demonstrations only.
+The first command copies the example settings into a local `.env` file. If you
+already have a `.env` file, keep it and do not overwrite it. The second command
+builds the backend and frontend images, starts both services, applies Django
+migrations, and loads the demo data.
 
-## Resetting the demo database
+When the services are ready, open:
 
-Click **Reset database** next to **Log out** on any of the four dashboards,
-then confirm. Any signed-in demo account can use this button.
+- Frontend: <http://localhost:3000>
+- Backend: <http://localhost:8000>
+- Django admin: <http://localhost:8000/admin/>
 
-Reset replaces current activity with the original demo dataset:
+The frontend calls the backend using the browser-visible address
+`http://localhost:8000`. Inside Compose, the backend service is named `backend`,
+but a browser cannot resolve that name. If you change the address, set
+`NEXT_PUBLIC_API_BASE` in `.env` to the address your browser can reach, then
+rebuild the frontend image as described in
+[Build and update Docker images](#build-and-update-docker-images).
 
-- The fifteen accounts above, with passwords restored to `12345678`.
-- Six restaurants (five open, Lachine Bistro paused) with saved Montreal coordinates and eight available menu items each.
-- Two couriers with saved locations: `courier1` has an offer; `courier2` is carrying an order.
-- 51 orders with varied workloads and three delivered orders per restaurant. Placed + accepted queues: Green Garden 2 (green), Vegan Corner 4 (amber), Plateau Pizza 7 (red), Verdun Bowl 0 (green), Rosemont Tacos 5 (amber), and Lachine Bistro 1 (red because paused). Vegan Corner also has one picked-up order.
-- Each customer receives a randomly assigned sample Montreal address and matching coordinates (repeatable on reset), also saved on their seeded orders. Checkout requires finding and selecting a delivery address; placing an order saves it on the customer account and snapshots it on the order.
-- Order status history and billing entries for the 18 delivered orders. Six ready orders wait in the delivery queue, plus one offered order; each courier still has at most one active offer or delivery.
+The command runs in the foreground and shows service logs. Press **Ctrl+C** to
+stop it, then run `docker compose down` to stop and remove the containers while
+keeping the database. To run Compose in the background instead, use:
 
-Orders, deliveries, refunds, extra accounts, and menu changes made during the
-demo are removed. Reset restores the seeded dataset, **not** the database backup
-from before demo setup. The reset button does not create a new backup.
+```bash
+docker compose up --build -d
+```
 
-The current dashboard reloads automatically. Refresh other open dashboard tabs
-after resetting to discard stale forms or carts. Existing demo account IDs are
-preserved, so those accounts can stay logged in.
+To see the logs from background services:
 
-Reset requires Django `DEBUG` mode and the local `backend/.demo-enabled` file
-created by `setup_demo`. This file is ignored by Git; run setup on each new
-checkout. Removing the file disables database reset.
+```bash
+docker compose logs -f
+```
 
+Press **Ctrl+C** to stop following the logs. The services will continue to
+run in the background until you stop them with `docker compose down`.
 
-## Courier dispatch and delivery flow
+## Demo accounts and seeded data
 
-Ready orders without an active offer or assignment form the delivery queue,
-ordered by ready time (oldest first), then order ID. Dispatch selects the nearest
-eligible idle courier to the restaurant. Couriers who are offline, carrying an
-order, or already have an active offer or assignment are skipped.
+### The `seed_data` management command
 
-Declining an offer immediately offers that order to the next nearest eligible
-courier who has not declined in the current round. Once all currently available
-couriers have declined, a new round starts with the nearest available courier.
-The declining courier is offered a different queued order, oldest ready first,
-before the original order can return to them. If no alternative can be assigned,
-the original order may be offered again. Decline history is preserved.
-If no courier is available, the order stays queued
-until dispatch is triggered by courier availability or another order becoming ready.
+The backend includes a custom Django management command named `seed_data`.
+Compose runs it automatically after migrations whenever the backend starts.
+The command is safe to run again: it creates missing demo records and keeps
+existing records instead of making a second copy of them.
 
-After **Confirm delivered**, the courier becomes idle and dispatch immediately
-checks the waiting queue. The dashboard switches to **Offers** and refreshes so
-the courier can accept their next offer. Nearest-courier selection still applies;
-completing a delivery does not bypass that rule. Each courier can have only one
-active offer or delivery at a time.
+If you run the backend locally, run the command from the `backend` folder:
 
-See [DEMO.md](DEMO.md) for a short walkthrough using the seeded orders.
+```bash
+python manage.py seed_data
+```
 
-Going offline before pickup releases any accepted delivery assignment. The order
-stays ready and returns to dispatch for another available courier; if none is
-available, it waits in the queue. The old assignment remains in history as
-cancelled. Going offline while carrying food is blocked until delivery is confirmed.
+To restore the standard restaurant settings and seeded menu item prices and
+availability, pass the special `--restore-baseline` option:
 
-## Dashboard map queues
+```bash
+python manage.py seed_data --restore-baseline
+```
 
-Restaurant markers show queued workload (placed + accepted orders): green for
-0–2, amber for 3–5, red for 6+, and always red when paused. Click a marker for
-queued/preparing/ready counts, active order states, the menu, and permitted quick
-actions. Optional labels show restaurant names and queue counts. Customer active
-orders use a purple marker outline without overriding the queue color.
+This option does not erase the database or delete orders and other records. To
+restore a completely fresh Docker demo database, use the full reset steps
+below.
 
-Owners see and manage their own queues, operators can inspect all restaurant
-queues, customers see their own orders, and couriers see their assigned delivery.
-See [the map demo instructions](DEMO.md#restaurant-map-queues).
+To run either command in a running Docker backend container, use:
 
+```bash
+docker compose exec backend python manage.py seed_data
+docker compose exec backend python manage.py seed_data --restore-baseline
+```
 
-### Seeded restaurant workload
+## Run the backend locally
 
-| Restaurant | Status | Placed | Accepted | Queued total | Marker |
-| --- | --- | --- | --- | --- | --- |
-| Green Garden | Open | 1 | 1 | 2 | Green |
-| Vegan Corner | Open | 2 | 2 | 4 | Amber |
-| Plateau Pizza | Open | 4 | 3 | 7 | Red |
-| Verdun Bowl | Open | 0 | 0 | 0 | Green |
-| Rosemont Tacos | Open | 3 | 2 | 5 | Amber |
-| Lachine Bistro | Paused | 1 | 0 | 1 | Red (paused override) |
+You need Python 3.13 or a compatible Python version supported by the packages
+in `backend/requirements.txt`.
 
-Queued counts are placed + accepted. Resume Lachine Bistro from its owner
-dashboard to see its marker change from red to green. Reset restores these counts
-and pauses Lachine Bistro again.
+1. Open a terminal at the repository root and create a virtual environment:
+
+   ```bash
+   cd backend
+   python3 -m venv .venv
+   ```
+
+2. Activate it.
+
+   macOS or Linux:
+
+   ```bash
+   source .venv/bin/activate
+   ```
+
+   Windows PowerShell:
+
+   ```powershell
+   .venv\Scripts\Activate.ps1
+   ```
+
+3. Install the backend dependencies and initialize the database:
+
+   ```bash
+   python -m pip install -r requirements.txt
+   python manage.py migrate
+   python manage.py seed_data
+   ```
+
+   `migrate` creates or updates the local SQLite database. `seed_data` adds
+   the demo accounts and example records.
+
+4. Start Django:
+
+   ```bash
+   python manage.py runserver
+   ```
+
+   The API is available at <http://localhost:8000>. Keep this terminal open
+   while using the application.
+
+## Run the frontend locally
+
+Open a **second terminal** at the repository root. Install Node.js 22 and npm,
+then run:
+
+```bash
+cd frontend
+npm ci
+npm run dev
+```
+
+`npm ci` installs the exact frontend dependencies recorded in
+`frontend/package-lock.json`. When Next.js says it is ready, open
+<http://localhost:3000>. Keep both the backend and frontend terminals running.
+
+The frontend API address defaults to `http://localhost:8000`. To use a
+different backend address during local development, create
+`frontend/.env.local` and add:
+
+```dotenv
+NEXT_PUBLIC_API_BASE=http://localhost:8000
+```
+
+Replace the value with the browser-visible backend address if it is different.
+Restart the frontend development server after changing this setting.
+
+## Build and update Docker images
+
+To build the images without starting the application, run this at the
+repository root:
+
+```bash
+docker compose build
+```
+
+The images are built from the Dockerfiles in `backend/` and `frontend/` using
+the dependencies in `backend/requirements.txt` and `frontend/package-lock.json`.
+
+Docker images contain a snapshot of the source files from build time. Making a
+Git commit by itself does not update an image. After changing application code,
+build and start/recreate the services with:
+
+```bash
+docker compose up --build
+```
+
+If the change only affects the backend, you can rebuild and restart that
+service with:
+
+```bash
+docker compose up --build -d backend
+```
+
+If the change affects the frontend, use:
+
+```bash
+docker compose up --build -d frontend
+```
+
+## Stop, resume, and reset Docker
+
+Stop the containers but keep the database and demo changes:
+
+```bash
+docker compose down
+```
+
+Start them again with the same database and records:
+
+```bash
+docker compose up
+```
+
+The database volume persists across normal stops and container recreation.
+Migrations and the idempotent seed command run at each backend start.
+
+To restore the initial demo state, remove the database volume and recreate the
+stack:
+
+```bash
+docker compose down --volumes
+docker compose up --build
+```
+
+This deletes all data stored in the Compose database volume, including changes
+made during the demo. The next startup creates a fresh database, applies all
+migrations, and reloads the seed data. This is the reliable full-reset
+procedure.
+
+## Testing and linting
+
+Run backend tests from the `backend` folder with the virtual environment
+activated:
+
+```bash
+python manage.py test
+```
+
+Run frontend linting from the `frontend` folder:
+
+```bash
+npm run lint
+```
+

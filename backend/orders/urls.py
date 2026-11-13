@@ -2,7 +2,8 @@ from django.urls import path
 from .map_views import DashboardMapView
 from .dashboard_views import (
     CustomerOrderListView, OperatorOverviewView, RestaurantListView,
-    RestaurantMenuView, RestaurantOrderBoardView, RestaurantPauseActivityView,
+    RestaurantMenuItemView, RestaurantMenuView, RestaurantOrderBoardView,
+    RestaurantPauseActivityView,
 )
 from .views import (
     DemoResetView,
@@ -41,6 +42,11 @@ urlpatterns = [
         "restaurants/<int:restaurant_id>/menu/",
         RestaurantMenuView.as_view(),
         name="restaurant-menu",
+    ),
+    path(
+        "restaurants/<int:restaurant_id>/menu/<int:menu_item_id>/",
+        RestaurantMenuItemView.as_view(),
+        name="restaurant-menu-item",
     ),
     path(
         "orders/",

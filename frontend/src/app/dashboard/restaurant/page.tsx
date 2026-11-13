@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import MontrealMap from "@/components/montreal-map";
 
@@ -21,6 +21,14 @@ type Order = {
   lines: { id: number; name: string; quantity: number; unit_price: string }[];
 };
 
+type MenuItem = {
+  id: number;
+  restaurant: number;
+  name: string;
+  price: string;
+  status: "available" | "sold_out";
+};
+
 const stages = [
   { status: "placed", title: "Placed", action: "Accept order", next: "accepted", color: "#E7D5A5" },
   { status: "accepted", title: "Accepted", action: "Start preparing", next: "preparing", color: "#B9D987" },
@@ -34,6 +42,9 @@ export default function RestaurantDashboard() {
   const [selectedStage, setSelectedStage] = useState("all");
   const [orders, setOrders] = useState<Order[]>([]);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const [menuItems, setMenuItems] = useState<Record<number, MenuItem[]>>({});
+  const [newMenuDrafts, setNewMenuDrafts] = useState<Record<number, { name: string; price: string }>>({});
+  const [pendingMenu, setPendingMenu] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const [noticePaused, setNoticePaused] = useState(false);
   const [error, setError] = useState("");
@@ -53,9 +64,16 @@ export default function RestaurantDashboard() {
         if (!response.ok) throw new Error(data.detail || "Could not load your orders.");
         return data;
       })
-      .then((data) => {
+      .then(async (data) => {
+        const menuEntries = await Promise.all(data.restaurants.map(async (restaurant: Restaurant) => {
+          const response = await apiFetch(`/api/restaurants/${restaurant.id}/menu/`);
+          const menuData = await response.json();
+          if (!response.ok) throw new Error(menuData.detail || `Could not load ${restaurant.name}'s menu.`);
+          return [restaurant.id, Array.isArray(menuData) ? menuData : menuData.results ?? []] as const;
+        }));
         setRestaurants(data.restaurants);
         setOrders(data.orders);
+        setMenuItems(Object.fromEntries(menuEntries));
         setLoaded(true);
         setError("");
       })
@@ -132,6 +150,85 @@ export default function RestaurantDashboard() {
     }
   }
 
+  function updateMenuDraft(restaurantId: number, changes: Partial<{ name: string; price: string }>) {
+    setNewMenuDrafts((current) => {
+      const existing = current[restaurantId] ?? { name: "", price: "" };
+      return {
+        ...current,
+        [restaurantId]: {
+          name: changes.name ?? existing.name,
+          price: changes.price ?? existing.price,
+        },
+      };
+    });
+  }
+
+  function updateMenuItemDraft(restaurantId: number, itemId: number, changes: Partial<MenuItem>) {
+    setMenuItems((current) => ({
+      ...current,
+      [restaurantId]: (current[restaurantId] ?? []).map((item) =>
+        item.id === itemId ? { ...item, ...changes } : item
+      ),
+    }));
+  }
+
+  async function addMenuItem(restaurant: Restaurant, event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy.current) return;
+    const draft = newMenuDrafts[restaurant.id] ?? { name: "", price: "" };
+    busy.current = true;
+    setPendingMenu(`new:${restaurant.id}`);
+    setError("");
+    setNotice("");
+    try {
+      const response = await apiFetch(`/api/restaurants/${restaurant.id}/menu/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: draft.name.trim(), price: draft.price }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || data.name?.[0] || data.price?.[0] || "Could not add this menu item.");
+      setMenuItems((current) => ({
+        ...current,
+        [restaurant.id]: [...(current[restaurant.id] ?? []), data].sort((a, b) => a.name.localeCompare(b.name)),
+      }));
+      updateMenuDraft(restaurant.id, { name: "", price: "" });
+      setNotice(`${data.name} added to ${restaurant.name}'s menu.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not add this menu item.");
+    } finally {
+      busy.current = false;
+      setPendingMenu(null);
+    }
+  }
+
+  async function saveMenuItem(restaurant: Restaurant, item: MenuItem) {
+    if (busy.current) return;
+    busy.current = true;
+    setPendingMenu(`item:${item.id}`);
+    setError("");
+    setNotice("");
+    try {
+      const response = await apiFetch(`/api/restaurants/${restaurant.id}/menu/${item.id}/`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: item.name.trim(), price: item.price, status: item.status }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || data.name?.[0] || data.price?.[0] || data.status?.[0] || "Could not update this menu item.");
+      setMenuItems((current) => ({
+        ...current,
+        [restaurant.id]: (current[restaurant.id] ?? []).map((entry) => entry.id === item.id ? data : entry),
+      }));
+      setNotice(`${data.name} updated.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update this menu item.");
+    } finally {
+      busy.current = false;
+      setPendingMenu(null);
+    }
+  }
+
   const sortedOrders = [...orders].sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at) || a.id - b.id);
   const queueKey = (order: Order) => `${order.restaurant_id}:${order.status}`;
   const queueHeads = new Map<string, number>();
@@ -166,6 +263,47 @@ export default function RestaurantDashboard() {
             ))}
           </div>
         </header>
+
+        <section className="mb-8 rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)]/80 p-5" aria-labelledby="menu-management-heading">
+          <h2 id="menu-management-heading" className="text-xl font-bold text-[var(--color-forest)]">Manage menus</h2>
+          <p className="form-help mt-1 mb-5">Add items, update prices, and mark items available or sold out.</p>
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+            {restaurants.map((restaurant) => (
+              <article key={restaurant.id} className="rounded-2xl border border-[var(--color-border)] p-4">
+                <h3 className="font-bold text-[var(--color-forest)]">{restaurant.name}</h3>
+                <form className="mt-4 grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_130px_auto] gap-2 items-end" onSubmit={(event) => void addMenuItem(restaurant, event)}>
+                  <label className="form-label">New item
+                    <input className="form-input mt-1" required maxLength={150} value={newMenuDrafts[restaurant.id]?.name ?? ""} onChange={(event) => updateMenuDraft(restaurant.id, { name: event.target.value })} />
+                  </label>
+                  <label className="form-label">Price (CAD)
+                    <input className="form-input mt-1" required type="number" min="0.01" step="0.01" value={newMenuDrafts[restaurant.id]?.price ?? ""} onChange={(event) => updateMenuDraft(restaurant.id, { price: event.target.value })} />
+                  </label>
+                  <button className="btn btn-primary" type="submit" disabled={loading || pendingMenu !== null || pending !== null || pendingRestaurant !== null}>{pendingMenu === `new:${restaurant.id}` ? "Adding…" : "Add item"}</button>
+                </form>
+                <ul className="mt-4 space-y-3">
+                  {(menuItems[restaurant.id] ?? []).map((item) => (
+                    <li key={item.id} className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_120px_140px_auto] gap-2 items-end rounded-xl bg-[var(--color-sage-light)]/40 p-3">
+                      <label className="form-label">Item name
+                        <input className="form-input mt-1" required maxLength={150} value={item.name} onChange={(event) => updateMenuItemDraft(restaurant.id, item.id, { name: event.target.value })} />
+                      </label>
+                      <label className="form-label">Price (CAD)
+                        <input className="form-input mt-1" required type="number" min="0.01" step="0.01" value={item.price} onChange={(event) => updateMenuItemDraft(restaurant.id, item.id, { price: event.target.value })} />
+                      </label>
+                      <label className="form-label">Availability
+                        <select className="form-input mt-1" value={item.status} onChange={(event) => updateMenuItemDraft(restaurant.id, item.id, { status: event.target.value as MenuItem["status"] })}>
+                          <option value="available">Available</option>
+                          <option value="sold_out">Sold out</option>
+                        </select>
+                      </label>
+                      <button className="btn btn-secondary" type="button" disabled={pendingMenu !== null || pending !== null || pendingRestaurant !== null} onClick={() => void saveMenuItem(restaurant, item)}>{pendingMenu === `item:${item.id}` ? "Saving…" : "Save"}</button>
+                    </li>
+                  ))}
+                  {loaded && !(menuItems[restaurant.id] ?? []).length && <li className="form-help">No menu items yet.</li>}
+                </ul>
+              </article>
+            ))}
+          </div>
+        </section>
 
         <div className="grid grid-cols-1 md:grid-cols-[200px_minmax(0,1fr)] gap-6 items-start">
           <nav aria-label="Restaurant order views" className="rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 flex flex-col gap-3 md:sticky md:top-5">

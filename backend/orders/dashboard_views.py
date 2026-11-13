@@ -3,13 +3,19 @@
 from django.contrib.auth import get_user_model
 from django.db.models import Count
 from django.utils import timezone
-from rest_framework import generics
+from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from guards.permissions import RequireAuth, RequireCustomer, RequireOperator, RequireRestaurantUser
+from .commands import CreateMenuItemCommand, UpdateMenuItemCommand
 from .models import MenuItem, Order, Restaurant
-from .serializers import MenuItemSerializer, RestaurantOrderSerializer, RestaurantSerializer
+from .serializers import (
+    MenuItemSerializer,
+    MenuItemWriteSerializer,
+    RestaurantOrderSerializer,
+    RestaurantSerializer,
+)
 
 
 class CustomerOrderListView(generics.ListAPIView):
@@ -31,14 +37,66 @@ class RestaurantListView(generics.ListAPIView):
 
 
 
-class RestaurantMenuView(generics.ListAPIView):
+class RestaurantMenuView(generics.ListCreateAPIView):
     serializer_class = MenuItemSerializer
     permission_classes = [RequireAuth]
 
+    def get_permissions(self):
+        permission_class = (
+            RequireRestaurantUser
+            if self.request.method == "POST"
+            else RequireAuth
+        )
+        return [permission_class()]
+
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return MenuItemWriteSerializer
+        return MenuItemSerializer
+
     def get_queryset(self):
-        return MenuItem.objects.filter(
+        queryset = MenuItem.objects.filter(
             restaurant_id=self.kwargs["restaurant_id"]
         )
+        if self.request.user.role == self.request.user.Role.RESTAURANT:
+            queryset = queryset.filter(restaurant__owner=self.request.user)
+        return queryset
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        item = CreateMenuItemCommand(
+            actor=request.user,
+            restaurant_id=self.kwargs["restaurant_id"],
+            **serializer.validated_data,
+        ).execute()
+        return Response(
+            MenuItemSerializer(item).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class RestaurantMenuItemView(generics.GenericAPIView):
+    permission_classes = [RequireRestaurantUser]
+    serializer_class = MenuItemWriteSerializer
+
+    def patch(self, request, restaurant_id, menu_item_id):
+        serializer = self.get_serializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        if not serializer.validated_data:
+            return Response(
+                {"detail": "At least one menu item field must be provided."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        item = UpdateMenuItemCommand(
+            actor=request.user,
+            restaurant_id=restaurant_id,
+            menu_item_id=menu_item_id,
+            changes=serializer.validated_data,
+        ).execute()
+        return Response(MenuItemSerializer(item).data)
+
+
 class RestaurantPauseActivityView(generics.GenericAPIView):
     serializer_class = RestaurantSerializer
     permission_classes = [RequireRestaurantUser]

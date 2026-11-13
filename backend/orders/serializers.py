@@ -27,6 +27,20 @@ class MenuItemSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
+
+class MenuItemWriteSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=150)
+    price = serializers.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        min_value=Decimal("0.01"),
+    )
+    status = serializers.ChoiceField(
+        choices=MenuItem.Status.choices,
+        required=False,
+        default=MenuItem.Status.AVAILABLE,
+    )
+
 class OrderItemInputSerializer(serializers.Serializer):
     menu_item_id = serializers.IntegerField(min_value=1)
     quantity = serializers.IntegerField(min_value=1)
