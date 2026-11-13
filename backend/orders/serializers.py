@@ -66,9 +66,19 @@ class RestaurantOrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ["id", "restaurant_id", "restaurant_name", "customer_name", "status", "created_at", "lines", "total"]
+        fields = ["id", "restaurant_id", "restaurant_name", "customer_name", "status", "created_at", "picked_up_at", "delivered_at", "lines", "total"]
 
 
 class OrderStatusSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=list(RESTAURANT_ORDER_COMMANDS))
     expected_status = serializers.ChoiceField(choices=Order.Status.choices)
+
+
+class OperatorCancelOrderSerializer(serializers.Serializer):
+    expected_status = serializers.ChoiceField(
+        choices=(
+            Order.Status.ACCEPTED,
+            Order.Status.PREPARING,
+            Order.Status.READY,
+        )
+    )

@@ -113,6 +113,9 @@ class Order(models.Model) :
         default=Status.PLACED,
     )
 
+    picked_up_at = models.DateTimeField(null=True, blank=True, editable=False)
+    delivered_at = models.DateTimeField(null=True, blank=True, editable=False)
+
     created_at = models.DateTimeField(
         auto_now_add=True,
     )
@@ -152,6 +155,67 @@ class DeliveryAssignment(models.Model):
             ),
         ]
 
+class OrderStatusEvent(models.Model):
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.PROTECT,
+        related_name="status_events",
+    )
+
+    transition_number = models.PositiveIntegerField()
+
+    event_id = models.CharField(
+        max_length=64,
+        unique=True,
+        editable=False,
+    )
+
+    from_status = models.CharField(
+        max_length=20,
+        blank=True,
+    )
+
+    to_status = models.CharField(
+        max_length=20,
+    )
+
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="order_status_events",
+    )
+
+    actor_username = models.CharField(
+        max_length=150,
+        blank=True,
+    )
+
+    actor_role = models.CharField(
+        max_length=30,
+        blank=True,
+    )
+
+    class Meta:
+        ordering = ["transition_number"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["order", "transition_number"],
+                name="unique_order_transition_number",
+            )
+        ]
+
+    def save(self, *args, **kwargs):
+        if not self.event_id and self.order_id and self.transition_number:
+            self.event_id = f"evt-{self.order_id}-{self.transition_number}"
+
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.event_id
 
 class OrderLine(models.Model) :
 

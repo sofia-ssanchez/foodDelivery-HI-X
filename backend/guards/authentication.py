@@ -1,3 +1,4 @@
+from .cookies import auth_cookie_name
 from rest_framework.authentication import CSRFCheck
 from rest_framework.exceptions import PermissionDenied
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -17,7 +18,7 @@ class CookieJWTAuthentication(JWTAuthentication):
     """Authenticate an access-token cookie using Simple JWT validation."""
 
     def authenticate(self, request):
-        raw_token = request.COOKIES.get("access_token")
+        raw_token = request.COOKIES.get(auth_cookie_name(request, "access"))
 
         if raw_token is None:
             return None
