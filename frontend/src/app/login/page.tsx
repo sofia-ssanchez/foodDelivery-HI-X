@@ -1,6 +1,7 @@
 
 "use client";
 
+import { demoFetch } from "@/lib/demo-toasts";
 import { useState } from "react";
 import type { ComponentProps } from "react";
 import { useRouter } from "next/navigation";
@@ -22,7 +23,7 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch(
+      const response = await demoFetch(
         "http://localhost:8000/api/accounts/login/",
         {
           method: "POST",

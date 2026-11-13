@@ -5,6 +5,7 @@ from .dashboard_views import (
     RestaurantMenuView, RestaurantOrderBoardView, RestaurantPauseActivityView,
 )
 from .views import (
+    DemoResetView,
     AddressLookupView,
     MapLocationView,
     CustomerCancelOrderView,
@@ -15,6 +16,7 @@ from .views import (
 from .views import PlaceOrderView, RestaurantOrderStatusView, OperatorOrderHistoryView
 
 urlpatterns = [
+    path("demo/reset/", DemoResetView.as_view(), name="demo-reset"),
     path("customer/address-lookup/", AddressLookupView.as_view(), name="checkout-address-lookup"),
     path("map/", DashboardMapView.as_view(), name="dashboard-map"),
     path("map/location/", MapLocationView.as_view(), name="map-location"),

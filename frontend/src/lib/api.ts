@@ -1,3 +1,5 @@
+import { demoFetch } from "./demo-toasts";
+
 export const API_BASE = "http://localhost:8000";
 
 let refreshRequest: Promise<void> | null = null;
@@ -8,7 +10,7 @@ async function refreshSession(): Promise<void> {
   if (loggingOut) throw new Error("Logging out.");
   if (!refreshRequest) {
     refreshRequest = (async () => {
-      const response = await fetch(`${API_BASE}/api/accounts/token/refresh/`, {
+      const response = await demoFetch(`${API_BASE}/api/accounts/token/refresh/`, {
         method: "POST",
         credentials: "include",
       });
@@ -42,7 +44,7 @@ export async function apiFetch(url: string, init: RequestInit = {}): Promise<Res
         headers.set("X-CSRFToken", decodeURIComponent(cookie.slice("csrftoken=".length)));
       }
     }
-    return fetch(target, { ...init, headers, credentials: "include" });
+    return demoFetch(target, { ...init, headers, credentials: "include" });
   };
 
   let response = await send();
@@ -63,7 +65,7 @@ export async function logout(): Promise<void> {
     if (refreshRequest) await refreshRequest.catch(() => undefined);
     const csrf = document.cookie.split(";").map((part) => part.trim())
       .find((part) => part.startsWith("csrftoken="));
-    const response = await fetch(`${API_BASE}/api/accounts/logout/`, {
+    const response = await demoFetch(`${API_BASE}/api/accounts/logout/`, {
       method: "POST",
       credentials: "include",
       headers: csrf ? { "X-CSRFToken": decodeURIComponent(csrf.slice("csrftoken=".length)) } : {},

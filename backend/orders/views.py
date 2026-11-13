@@ -211,3 +211,13 @@ class MapLocationView(APIView):
         courier = get_object_or_404(Courier, user=user)
         Courier.objects.filter(pk=courier.pk).update(**serializer.validated_data)
         return Response({"detail": "Location saved."})
+
+
+class DemoResetView(APIView):
+    permission_classes = [RequireAuth]
+
+    def post(self, request):
+        from .demo import reset_demo
+        response = Response(reset_demo())
+        response['Cache-Control'] = 'no-store'
+        return response

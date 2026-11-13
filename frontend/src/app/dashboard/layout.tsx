@@ -1,11 +1,29 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { logout } from "@/lib/api";
+import { apiFetch, logout } from "@/lib/api";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+
+  const [resetting, setResetting] = useState(false);
+
+  async function handleReset() {
+    if (pending || resetting) return;
+    if (!window.confirm("Reset the database to the demo baseline? Current activity will be replaced with the seeded accounts, menus, and orders.")) return;
+    setResetting(true);
+    setError("");
+    try {
+      const response = await apiFetch("/api/demo/reset/", { method: "POST" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "Could not reset the database.");
+      window.location.reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not reset the database.");
+      setResetting(false);
+    }
+  }
 
   async function handleLogout() {
     if (pending) return;
@@ -32,7 +50,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </svg>
           <p className="text-2xl sm:text-3xl font-semibold tracking-tight" style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}>Five Leaf Clover</p>
         </div>
-        <button type="button" className="btn btn-secondary" disabled={pending} onClick={() => void handleLogout()}>{pending ? "Logging out…" : "Log out"}</button>
+        <div className="flex flex-wrap gap-3">
+          <button type="button" className="btn btn-primary" disabled={pending || resetting} onClick={() => void handleReset()}>{resetting ? "Resetting…" : "Reset database"}</button>
+        <button type="button" className="btn btn-secondary" disabled={pending || resetting} onClick={() => void handleLogout()}>{pending ? "Logging out…" : "Log out"}</button>
+        </div>
       </div>
       {error && <p role="alert" className="message message-error max-w-[1440px] mx-auto mt-3">{error}</p>}
     </div>

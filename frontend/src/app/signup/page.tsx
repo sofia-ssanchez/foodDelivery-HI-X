@@ -1,5 +1,6 @@
 "use client";
 
+import { demoFetch } from "@/lib/demo-toasts";
 import { useState } from "react";
 import type { ComponentProps } from "react";
 
@@ -20,7 +21,7 @@ export default function SignupPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch(
+      const response = await demoFetch(
         "http://localhost:8000/api/accounts/signup/",
         {
           method: "POST",
