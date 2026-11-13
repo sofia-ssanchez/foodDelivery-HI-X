@@ -2,11 +2,8 @@ from abc import ABC, abstractmethod
 from django.db import transaction
 from django.db.models import Subquery
 from django.shortcuts import get_object_or_404
-from rest_framework.exceptions import (
-    APIException,
-    PermissionDenied,
-    ValidationError,
-)
+from django.utils import timezone
+from rest_framework.exceptions import APIException, PermissionDenied, ValidationError
 from pricing.services import record_order_ledger
 from .event_services import record_order_status_event
 from delivery import events
@@ -356,6 +353,8 @@ class MarkOrderReadyCommand(RestaurantOrderCommand):
     @transaction.atomic
     def execute(self):
         order = super().execute()
+        order.ready_at = timezone.now()
+        order.save(update_fields=["ready_at"])
         transaction.on_commit(lambda: order_ready_publisher.notify(order))
         return order
 
