@@ -1,10 +1,13 @@
 """Run with: python manage.py test orders.dispatch --verbosity 2."""
 
 from django.test import TestCase
+from django.utils import timezone
+from datetime import timedelta
 
 from accounts.models import User
 from orders.commands import MarkOrderReadyCommand
 from orders.models import DeliveryAssignment, Order, Restaurant
+from .services import OrderQueueService
 
 
 class DispatchPipelineTests(TestCase):
@@ -50,6 +53,7 @@ class DispatchPipelineTests(TestCase):
 
         order.refresh_from_db()
         self.assertEqual(order.status, Order.Status.READY)
+        self.assertIsNotNone(order.ready_at)
         print("PASS: Order changed to READY.", flush=True)
 
         assignment = DeliveryAssignment.objects.get(order=order, is_active=True)
@@ -58,3 +62,30 @@ class DispatchPipelineTests(TestCase):
         self.assertEqual(assignment.courier, nearest)
         print(f"PASS: Selected nearest courier: {assignment.courier.username}.", flush=True)
         print("CLEANUP: Django will roll back these test records and destroy the test database after the run.", flush=True)
+
+
+class OrderQueueTests(TestCase):
+    def test_queue_orders_by_ready_time_then_id_and_excludes_assigned(self):
+        user = User.objects.create(username="queue-user")
+        restaurant = Restaurant.objects.create(
+            name="Queue Restaurant", owner=user, latitude=0, longitude=0,
+        )
+        now = timezone.now()
+
+        def make_order(status=Order.Status.READY, ready_at=now):
+            return Order.objects.create(
+                customer=user, restaurant=restaurant,
+                status=status, ready_at=ready_at,
+            )
+
+        later = make_order(ready_at=now + timedelta(minutes=1))
+        first = make_order()
+        second = make_order()
+        make_order(status=Order.Status.PREPARING, ready_at=None)
+        assigned = make_order()
+        courier = User.objects.create(username="queue-courier", role=User.Role.COURIER)
+        DeliveryAssignment.objects.create(order=assigned, courier=courier)
+        DeliveryAssignment.objects.create(order=first, courier=courier, is_active=False)
+
+        self.assertEqual(list(OrderQueueService().get_waiting_orders()), [first, second, later])
+        print("PASS: Waiting queue uses ready time, ID tiebreak, and excludes active assignments.", flush=True)

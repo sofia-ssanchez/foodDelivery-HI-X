@@ -117,6 +117,8 @@ class Order(models.Model) :
         auto_now_add=True,
     )
 
+    ready_at = models.DateTimeField(null=True, blank=True)
+
     def __str__(self):
         return f"Orders {self.id} - {self.status}"
 

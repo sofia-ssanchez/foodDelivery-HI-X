@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from django.db import transaction
 from django.db.models import Subquery
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework.exceptions import APIException, PermissionDenied, ValidationError
 from pricing.services import record_order_ledger
 from .models import MenuItem, Order, OrderLine, Restaurant
@@ -214,6 +215,8 @@ class MarkOrderReadyCommand(RestaurantOrderCommand):
     @transaction.atomic
     def execute(self):
         order = super().execute()
+        order.ready_at = timezone.now()
+        order.save(update_fields=["ready_at"])
         transaction.on_commit(lambda: order_ready_publisher.notify(order))
         return order
 

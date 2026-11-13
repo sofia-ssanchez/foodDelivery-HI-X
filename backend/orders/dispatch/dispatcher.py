@@ -5,7 +5,7 @@ from django.db import transaction
 from accounts.models import User
 from orders.models import DeliveryAssignment, Order
 from .interfaces import DispatchStrategy, OrderReadyObserver
-from .services import CourierService
+from .services import CourierService, OrderQueueService
 from .strategies import NearestIdleCourierStrategy
 
 
@@ -43,8 +43,7 @@ class Dispatcher(OrderReadyObserver):
         if not verify_availability:
             return False
         DeliveryAssignment.objects.create(order=order, courier=courier)
-
-
+        return True
 
     @transaction.atomic
     def on_order_ready(self, order: Order) -> None:
@@ -75,17 +74,41 @@ class Dispatcher(OrderReadyObserver):
             ]
 
         # No eligible courier: leave the order READY and unassigned for retry.
-
+    @transaction.atomic
     def on_courier_available(self, courier: User) -> None:
         """React when a courier becomes available."""
-        # This method is not implemented yet. It could be used to trigger
-        # assignment of READY orders to newly available couriers.
+       
         courier = User.objects.select_for_update().get(pk=courier.pk)
 
         if courier.role != User.Role.COURIER or not courier.is_active or not courier.is_available:
             return
 
+        waiting_orders = OrderQueueService().get_waiting_orders()
+       
+        for order in waiting_orders:
+
+             order = Order.objects.select_for_update().get(pk=order.pk)
+
+             if DeliveryAssignment.objects.filter(courier=courier, is_active=True).exists():
+                continue
+             if order.status != Order.Status.READY:
+                continue
+            
+            
+             self.assign_order_to_courier(order, courier)
+                
+        
+           
+            
+            
+
+
+
+        
+        
+            
+
         
 
         
-        pass
+        
