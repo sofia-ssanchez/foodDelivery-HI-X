@@ -13,6 +13,7 @@ from delivery import events
 from delivery.models import DeliveryAssignment
 from delivery.services import invalidate_offers_for_cancelled_order
 from .models import MenuItem, Order, OrderLine, Restaurant
+from .dispatch.events import order_ready_publisher
 
 
 class OrderCommand(ABC):
@@ -351,6 +352,12 @@ class StartPreparationCommand(RestaurantOrderCommand):
 
 class MarkOrderReadyCommand(RestaurantOrderCommand):
     target_status = Order.Status.READY
+
+    @transaction.atomic
+    def execute(self):
+        order = super().execute()
+        transaction.on_commit(lambda: order_ready_publisher.notify(order))
+        return order
 
 
 RESTAURANT_ORDER_COMMANDS = {
