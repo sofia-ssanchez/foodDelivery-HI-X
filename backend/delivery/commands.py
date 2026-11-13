@@ -5,6 +5,7 @@ from types import SimpleNamespace
 import time
 
 from django.db import IntegrityError, OperationalError, transaction
+from orders.event_services import record_order_status_event
 from django.utils import timezone
 from rest_framework.exceptions import APIException, PermissionDenied, ValidationError
 
@@ -52,7 +53,7 @@ def _transition_courier(courier, target_status):
     courier.status = target_status
 
 
-def _transition_order(order, target_status, **timestamps):
+def _transition_order(order, target_status, actor, **timestamps):
     previous_status = order.status
     try:
         order.transition(target_status)
@@ -62,6 +63,12 @@ def _transition_order(order, target_status, **timestamps):
         pk=order.pk, status=previous_status
     ).update(status=order.status, **timestamps):
         raise DeliveryConflict()
+    record_order_status_event(
+        order=order,
+        from_status=previous_status,
+        to_status=order.status,
+        actor=actor,
+    )
 
 
 def _active_assignments(courier):
@@ -274,7 +281,12 @@ class ConfirmPickupCommand(AssignmentCommand):
         if courier.status != Courier.Status.ASSIGNED or assignment.picked_up_at:
             raise DeliveryConflict("This delivery is not awaiting pickup.")
         picked_up_at = timezone.now()
-        _transition_order(order, Order.Status.PICKED_UP, picked_up_at=picked_up_at)
+        _transition_order(
+            order,
+            Order.Status.PICKED_UP,
+            courier.user,
+            picked_up_at=picked_up_at,
+        )
         if not DeliveryAssignment.objects.filter(
             pk=assignment.pk,
             courier=courier,
@@ -297,7 +309,12 @@ class ConfirmDeliveryCommand(AssignmentCommand):
         if courier.status != Courier.Status.CARRYING or order.status != Order.Status.PICKED_UP:
             raise DeliveryConflict("Pickup must be confirmed before delivery.")
         delivered_at = timezone.now()
-        _transition_order(order, Order.Status.DELIVERED, delivered_at=delivered_at)
+        _transition_order(
+            order,
+            Order.Status.DELIVERED,
+            courier.user,
+            delivered_at=delivered_at,
+        )
         if not DeliveryAssignment.objects.filter(
             pk=assignment.pk,
             courier=courier,
