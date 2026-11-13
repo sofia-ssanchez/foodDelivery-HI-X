@@ -9,7 +9,7 @@ from .commands import (
     PlaceOrderCommand,
     RESTAURANT_ORDER_COMMANDS,
 )
-from .models import Order
+from .models import Order, OrderStatusEvent
 from .serializers import (
     OperatorCancelOrderSerializer,
     PlaceOrderSerializer,

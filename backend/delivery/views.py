@@ -1,8 +1,10 @@
+from django.db import transaction
 from django.shortcuts import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from guards.permissions import RequireCourier
+from dispatch.events import courier_available_publisher
 
 from .commands import (
     AcceptOfferCommand,
@@ -53,6 +55,8 @@ class CourierDutyView(APIView):
             actor=request.user,
             on_duty=serializer.validated_data["on_duty"],
         ).execute()
+        if courier.status == Courier.Status.IDLE:
+            transaction.on_commit(lambda: courier_available_publisher.notify(courier))
         return Response(CourierSerializer(courier).data)
 
 

@@ -1,7 +1,7 @@
 """Notify subscribed observers when an order becomes ready."""
 
 from orders.models import Order
-from accounts.models import User
+from delivery.models import Courier
 from .interfaces import OrderReadyObserver, CourierAvailabilityObserver
 
 
@@ -33,6 +33,6 @@ class CourierAvailabilityPublisher:
         if observer in self.observers:
             self.observers.remove(observer)
 
-    def notify(self, courier: User) -> None:
+    def notify(self, courier: Courier) -> None:
         for observer in list(self.observers):
             observer.on_courier_available(courier)
