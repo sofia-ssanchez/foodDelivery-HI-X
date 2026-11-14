@@ -39,7 +39,7 @@ class DeliveryAssignmentSerializer(serializers.ModelSerializer):
         fields = [
             "id", "order_id", "delivery_address", "delivery_unit", "customer_name", "created_at", "lines", "status", "order_status", "restaurant_name",
             "restaurant_latitude", "restaurant_longitude", "offered_at",
-            "accepted_at", "declined_at", "cancelled_at", "picked_up_at",
+            "expired_at", "accepted_at", "declined_at", "cancelled_at", "picked_up_at",
             "delivered_at",
         ]
         read_only_fields = fields

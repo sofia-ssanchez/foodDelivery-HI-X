@@ -56,6 +56,7 @@ class DeliveryAssignment(models.Model):
     """An offer and its outcome; completed rows preserve courier history."""
 
     class Status(models.TextChoices):
+        EXPIRED = "expired", "Expired"
         OFFERED = "offered", "Offered"
         ACCEPTED = "accepted", "Accepted"
         DECLINED = "declined", "Declined"
@@ -79,6 +80,7 @@ class DeliveryAssignment(models.Model):
         default=Status.OFFERED,
     )
     offered_at = models.DateTimeField(auto_now_add=True)
+    expired_at = models.DateTimeField(null=True, blank=True)
     accepted_at = models.DateTimeField(null=True, blank=True)
     declined_at = models.DateTimeField(null=True, blank=True)
     cancelled_at = models.DateTimeField(null=True, blank=True)

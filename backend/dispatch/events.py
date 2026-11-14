@@ -28,3 +28,18 @@ def offer_waiting_order(sender, courier_id, **kwargs):
     courier = Courier.objects.filter(pk=courier_id).first()
     if courier is not None:
         dispatcher.on_courier_available(courier)
+
+
+from delivery.events import delivery_offer_expired
+from orders.models import Order
+from .publishers import StalledOrderPublisher
+
+stalled_order_publisher = StalledOrderPublisher()
+stalled_order_publisher.subscribe(dispatcher)
+
+
+@receiver(delivery_offer_expired, dispatch_uid="dispatch.expired_offer")
+def publish_stalled_order(sender, order_id, **kwargs):
+    order = Order.objects.filter(pk=order_id).first()
+    if order is not None:
+        stalled_order_publisher.notify(order)
