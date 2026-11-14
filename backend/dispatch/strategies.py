@@ -45,7 +45,7 @@ class NearestIdleCourierStrategy(DispatchStrategy):
                 or distance < closest_distance
                 or (
                     distance == closest_distance
-                    and courier.user_id < closest_courier.user_id
+                    and courier.pk < closest_courier.pk
                 )
             ):
                 closest_courier = courier
