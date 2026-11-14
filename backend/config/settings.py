@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'accounts',
     'orders',
     'delivery',
+    'dispatch',
     'pricing',
 ]
 
@@ -168,3 +169,6 @@ CORS_ALLOW_CREDENTIALS = True
 
 # Override with a private Photon instance for larger deployments.
 ADDRESS_LOOKUP_URL = os.environ.get("ADDRESS_LOOKUP_URL", "https://photon.komoot.io/api/")
+
+DISPATCH_OFFER_TIMEOUT_SECONDS = int(os.environ.get("DISPATCH_OFFER_TIMEOUT_SECONDS", "120"))
+DISPATCH_EXPIRED_COOLDOWN_SECONDS = int(os.environ.get("DISPATCH_EXPIRED_COOLDOWN_SECONDS", "120"))

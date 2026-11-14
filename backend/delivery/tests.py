@@ -570,6 +570,40 @@ class ConcurrentDeliveryActionTests(TransactionTestCase):
             msg=f"concurrent responses: {statuses!r}",
         )
 
+    def test_acceptance_racing_expiration_has_one_winner(self):
+        from django.utils import timezone
+        from .commands import AcceptOfferCommand, expire_delivery_offer
+        barrier = Barrier(2)
+        cutoff = timezone.now()
+
+        def perform(accept):
+            close_old_connections()
+            try:
+                barrier.wait(timeout=5)
+                if accept:
+                    AcceptOfferCommand(self.courier_user, self.assignment.pk).execute()
+                    return True
+                return expire_delivery_offer(
+                    assignment_id=self.assignment.pk, cutoff=cutoff,
+                )
+            except DeliveryConflict:
+                return False
+            finally:
+                close_old_connections()
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(pool.map(perform, [True, False]))
+        self.assertEqual(sum(results), 1)
+        self.assignment.refresh_from_db()
+        self.courier.refresh_from_db()
+        self.assertIn(self.assignment.status, [
+            DeliveryAssignment.Status.ACCEPTED, DeliveryAssignment.Status.EXPIRED,
+        ])
+        expected = (Courier.Status.ASSIGNED
+                    if self.assignment.status == DeliveryAssignment.Status.ACCEPTED
+                    else Courier.Status.IDLE)
+        self.assertEqual(self.courier.status, expected)
+
     def test_concurrent_acceptance_has_one_winner(self):
         statuses = self.concurrent_posts(
             f"/api/delivery/offers/{self.assignment.id}/accept/"
