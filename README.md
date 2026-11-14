@@ -160,11 +160,13 @@ then run:
 cd frontend
 npm ci
 npm run dev
+
 ```
 
 `npm ci` installs the exact frontend dependencies recorded in
 `frontend/package-lock.json`. When Next.js says it is ready, open
 <http://localhost:3000>. Keep both the backend and frontend terminals running.
+`npm install leaflet` to add live map dashboard.
 
 The frontend API address defaults to `http://localhost:8000`. To use a
 different backend address during local development, create
