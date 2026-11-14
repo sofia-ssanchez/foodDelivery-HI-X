@@ -7,6 +7,7 @@ from .views import (
     CourierActivityView,
     CourierDutyView,
     DeclineOfferView,
+    OperatorReassignDeliveryView,
 )
 
 urlpatterns = [
@@ -16,4 +17,5 @@ urlpatterns = [
     path("offers/<int:assignment_id>/decline/", DeclineOfferView.as_view(), name="decline-delivery-offer"),
     path("assignments/<int:assignment_id>/pickup/", ConfirmPickupView.as_view(), name="confirm-delivery-pickup"),
     path("assignments/<int:assignment_id>/deliver/", ConfirmDeliveryView.as_view(), name="confirm-delivery-delivery"),
+    path("operator/assignments/<int:assignment_id>/reassign/", OperatorReassignDeliveryView.as_view(), name="operator-reassign-delivery"),
 ]

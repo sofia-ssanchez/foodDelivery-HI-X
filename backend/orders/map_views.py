@@ -1,5 +1,5 @@
 """Role-scoped map data; private locations are filtered before serialization."""
-from django.db.models import Count, Q
+from django.db.models import Count
 from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
@@ -26,7 +26,7 @@ class DashboardMapView(APIView):
         if user.role == "customer":
             orders = Order.objects.filter(customer=user, status__in=ACTIVE_STATUSES)
             highlighted = set(orders.values_list("restaurant_id", flat=True))
-            restaurants = Restaurant.objects.filter(Q(status="open") | Q(id__in=highlighted))
+            restaurants = Restaurant.objects.all()
             couriers = Courier.objects.filter(
                 status="carrying", assignments__in=active_assignments.filter(
                     order__customer=user, order__status="picked_up"
@@ -43,7 +43,9 @@ class DashboardMapView(APIView):
             ).distinct()
         elif user.role == "operator":
             restaurants = Restaurant.objects.all()
-            couriers = Courier.objects.select_related("user").all()
+            couriers = Courier.objects.select_related("user").exclude(
+                status=Courier.Status.OFFLINE
+            )
         elif user.role == "courier":
             profile = get_object_or_404(Courier, user=user)
             couriers = Courier.objects.filter(pk=profile.pk)
@@ -102,6 +104,29 @@ class DashboardMapView(APIView):
                     if action:
                         actions = [{"label": "Confirm pickup" if action == "pickup" else "Confirm delivered",
                                     "url": f"/api/delivery/assignments/{assignment.pk}/{action}/", "method": "POST", "body": {}}]
+                elif user.role == "operator" and order.status == Order.Status.READY:
+                    stalled = order.delivery_assignments.filter(
+                        status=DeliveryAssignment.Status.ACCEPTED,
+                        picked_up_at__isnull=True,
+                        courier__status=Courier.Status.OFFLINE,
+                    ).first()
+                    if stalled:
+                        eligible = Courier.objects.select_related("user").filter(
+                            status=Courier.Status.IDLE,
+                            user__is_active=True,
+                            user__role="courier",
+                        ).exclude(
+                            assignments__status__in=(
+                                DeliveryAssignment.Status.OFFERED,
+                                DeliveryAssignment.Status.ACCEPTED,
+                            )
+                        ).order_by("id")
+                        actions = [{
+                            "label": f"Reassign to {target.user.username}",
+                            "url": f"/api/delivery/operator/assignments/{stalled.pk}/reassign/",
+                            "method": "POST",
+                            "body": {"courier_id": str(target.pk)},
+                        } for target in eligible]
                 rows.append({"id": order.pk, "status": order.status, "created_at": order.created_at, "actions": actions})
             point = self.point(f"restaurant-{restaurant.id}", restaurant.name, kind, restaurant.latitude, restaurant.longitude, detail)
             point["restaurant"] = {

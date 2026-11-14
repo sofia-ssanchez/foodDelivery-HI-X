@@ -8,6 +8,10 @@ class DutySerializer(serializers.Serializer):
     on_duty = serializers.BooleanField()
 
 
+class ReassignDeliverySerializer(serializers.Serializer):
+    courier_id = serializers.IntegerField(min_value=1)
+
+
 class CourierSerializer(serializers.ModelSerializer):
     class Meta:
         model = Courier
