@@ -383,3 +383,35 @@ class ReassignDeliveryCommand:
             order_id=order.pk,
             courier_id=self.courier_id,
         )
+
+
+@translate_write_races
+@transaction.atomic
+def expire_delivery_offer(*, assignment_id, cutoff):
+    """Expire an unanswered offer, preserving accepted assignments."""
+    candidate = DeliveryAssignment.objects.filter(pk=assignment_id).values(
+        "courier_id"
+    ).first()
+    if candidate is None:
+        return False
+    Courier.objects.select_for_update().get(pk=candidate["courier_id"])
+    assignment = DeliveryAssignment.objects.select_for_update().filter(
+        pk=assignment_id
+    ).first()
+    if assignment is None:
+        return False
+    Order.objects.select_for_update().get(pk=assignment.order_id)
+    if (assignment.status != DeliveryAssignment.Status.OFFERED
+            or assignment.offered_at > cutoff):
+        return False
+    if not DeliveryAssignment.objects.filter(
+        pk=assignment.pk, status=DeliveryAssignment.Status.OFFERED,
+        offered_at__lte=cutoff,
+    ).update(status=DeliveryAssignment.Status.EXPIRED, expired_at=timezone.now()):
+        return False
+    _schedule_event(
+        events.delivery_offer_expired,
+        assignment_id=assignment.pk, order_id=assignment.order_id,
+        courier_id=assignment.courier_id,
+    )
+    return True

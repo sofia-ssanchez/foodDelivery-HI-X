@@ -35,6 +35,20 @@ services:
       retries: 20
       start_period: 10s
 
+  dispatch_worker:
+    build:
+      context: ./backend
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-local-compose-demo-key-change-for-deployment}
+      SQLITE_PATH: /data/db.sqlite3
+    volumes:
+      - sqlite_data:/data
+    depends_on:
+      backend:
+        condition: service_healthy
+    command: python manage.py check_stalled_orders --loop --interval 30
+    restart: unless-stopped
+
   frontend:
     build:
       context: ./frontend

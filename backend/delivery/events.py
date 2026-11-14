@@ -16,3 +16,6 @@ order_became_ready = Signal()
 
 # An accepted assignment was released before pickup (for example, off duty).
 delivery_assignment_released = Signal()
+
+# An unanswered offer expired: assignment_id, order_id, courier_id.
+delivery_offer_expired = Signal()

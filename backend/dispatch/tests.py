@@ -186,3 +186,85 @@ class CourierDutyEndpointTests(CourierAvailabilityPipelineTests):
         offer.refresh_from_db()
         self.assertEqual(offer.status, DeliveryAssignment.Status.ACCEPTED)
         print("PASS: Duty endpoint dispatches after commit; courier sees and accepts the same offer.", flush=True)
+
+
+class StalledOrderTests(TestCase):
+    def setUp(self):
+        self.customer = User.objects.create(username="stalled-customer")
+        self.restaurant = Restaurant.objects.create(
+            name="Stalled Restaurant", owner=self.customer, latitude=0, longitude=0,
+        )
+        self.order = Order.objects.create(
+            customer=self.customer, restaurant=self.restaurant,
+            status=Order.Status.READY, ready_at=timezone.now() - timedelta(minutes=5),
+        )
+        self.courier = make_courier("stalled-near", 1)
+        self.offer = DeliveryAssignment.objects.create(
+            order=self.order, courier=self.courier,
+        )
+        DeliveryAssignment.objects.filter(pk=self.offer.pk).update(
+            offered_at=timezone.now() - timedelta(minutes=3),
+        )
+
+    def test_expiration_notifies_after_commit_and_reoffers(self):
+        from delivery.commands import expire_delivery_offer
+        other = make_courier("stalled-far", 2)
+        ready_at = self.order.ready_at
+        with self.captureOnCommitCallbacks(execute=True) as callbacks:
+            self.assertTrue(expire_delivery_offer(
+                assignment_id=self.offer.pk,
+                cutoff=timezone.now() - timedelta(minutes=2),
+            ))
+            self.assertEqual(DeliveryAssignment.objects.filter(order=self.order).count(), 1)
+        self.assertEqual(len(callbacks), 1)
+        self.offer.refresh_from_db()
+        self.assertEqual(self.offer.status, DeliveryAssignment.Status.EXPIRED)
+        self.assertIsNotNone(self.offer.expired_at)
+        self.assertEqual(DeliveryAssignment.objects.get(
+            order=self.order, status=DeliveryAssignment.Status.OFFERED,
+        ).courier, other)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, Order.Status.READY)
+        self.assertEqual(self.order.ready_at, ready_at)
+
+    def test_cooldown_keeps_order_waiting_then_sweep_retries(self):
+        from .tasks import check_stalled_orders
+        from .events import dispatcher
+        with self.captureOnCommitCallbacks(execute=True):
+            self.assertEqual(check_stalled_orders(), 1)
+        self.assertTrue(OrderQueueService().get_waiting_orders().filter(pk=self.order.pk).exists())
+        self.assertFalse(dispatcher.assign_order_to_courier(self.order, self.courier))
+        DeliveryAssignment.objects.filter(pk=self.offer.pk).update(
+            expired_at=timezone.now() - timedelta(minutes=3),
+        )
+        self.assertEqual(check_stalled_orders(), 0)
+        self.assertEqual(DeliveryAssignment.objects.get(
+            order=self.order, status=DeliveryAssignment.Status.OFFERED,
+        ).courier, self.courier)
+
+    def test_accepted_offer_is_not_expired(self):
+        from delivery.commands import AcceptOfferCommand, expire_delivery_offer
+        AcceptOfferCommand(self.courier.user, self.offer.pk).execute()
+        self.assertFalse(expire_delivery_offer(
+            assignment_id=self.offer.pk, cutoff=timezone.now(),
+        ))
+        self.offer.refresh_from_db()
+        self.assertEqual(self.offer.status, DeliveryAssignment.Status.ACCEPTED)
+
+    def test_expired_offer_cannot_be_accepted_and_expiration_is_idempotent(self):
+        from delivery.commands import AcceptOfferCommand, DeliveryConflict, expire_delivery_offer
+        self.assertTrue(expire_delivery_offer(
+            assignment_id=self.offer.pk, cutoff=timezone.now(),
+        ))
+        self.assertFalse(expire_delivery_offer(
+            assignment_id=self.offer.pk, cutoff=timezone.now(),
+        ))
+        with self.assertRaises(DeliveryConflict):
+            AcceptOfferCommand(self.courier.user, self.offer.pk).execute()
+
+    def test_fresh_offer_is_not_expired(self):
+        from delivery.commands import expire_delivery_offer
+        self.assertFalse(expire_delivery_offer(
+            assignment_id=self.offer.pk,
+            cutoff=timezone.now() - timedelta(minutes=4),
+        ))

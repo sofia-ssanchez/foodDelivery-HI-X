@@ -4,12 +4,12 @@ from delivery.commands import create_delivery_offer, DeliveryConflict
 from delivery.models import Courier, DeliveryAssignment
 from orders.models import Order
 from rest_framework.exceptions import ValidationError
-from .interfaces import DispatchStrategy, OrderReadyObserver, CourierAvailabilityObserver
+from .interfaces import DispatchStrategy, OrderReadyObserver, CourierAvailabilityObserver, StalledOrderObserver
 from .services import ACTIVE_STATUSES, CourierService, OrderQueueService
 from .strategies import NearestIdleCourierStrategy
 
 
-class Dispatcher(OrderReadyObserver, CourierAvailabilityObserver):
+class Dispatcher(OrderReadyObserver, CourierAvailabilityObserver, StalledOrderObserver):
     def __init__(self, courier_service: CourierService | None = None,
                  strategy: DispatchStrategy | None = None):
         self.courier_service = courier_service if courier_service is not None else CourierService()
@@ -17,7 +17,8 @@ class Dispatcher(OrderReadyObserver, CourierAvailabilityObserver):
 
     def verify_availability(self, courier: Courier) -> bool:
         return (
-            Courier.objects.filter(
+            not CourierService().get_cooling_down_courier_ids().filter(courier_id=courier.pk).exists()
+            and Courier.objects.filter(
                 pk=courier.pk, status=Courier.Status.IDLE,
                 user__is_active=True, user__role="courier",
                 latitude__isnull=False, longitude__isnull=False,
@@ -37,6 +38,11 @@ class Dispatcher(OrderReadyObserver, CourierAvailabilityObserver):
             return False
         return True
 
+    def on_order_stalled(self, order: Order) -> None:
+        waiting_order = OrderQueueService().get_waiting_orders().filter(pk=order.pk).first()
+        if waiting_order is not None:
+            self.offer_to_nearest(waiting_order)
+
     def on_order_ready(self, order: Order) -> None:
         waiting_orders = OrderQueueService().get_waiting_orders()
         if not waiting_orders.filter(pk=order.pk).exists():
@@ -55,7 +61,7 @@ class Dispatcher(OrderReadyObserver, CourierAvailabilityObserver):
         # repeated courier marks the start of a new round of offers.
         declined = set()
         history = DeliveryAssignment.objects.filter(
-            order=order, status=DeliveryAssignment.Status.DECLINED,
+            order=order, status__in=(DeliveryAssignment.Status.DECLINED, DeliveryAssignment.Status.EXPIRED),
         ).order_by("id").values_list("courier_id", flat=True)
         
         for courier_id in history:
