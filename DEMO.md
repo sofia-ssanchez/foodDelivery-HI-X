@@ -1,21 +1,13 @@
 # Local demo
 
-All passwords: `12345678`.
+All demo accounts use the password `12345678`.
 
-| Accounts | Role |
+| Username | Role / restaurant |
 | --- | --- |
 | customer1–customer6 | Customer |
 | courier1, courier2 | Courier |
 | restaurant1 | Green Garden owner |
 | restaurant2 | Vegan Corner owner |
-| operator1 | Operator |
-
-The baseline has two open Montreal restaurants, eight available menu items per
-restaurant and eight orders: two placed, two preparing, one ready, one picked
-up, and two delivered. Courier1 has an offer to accept; courier2 is carrying an
-order. Delivered orders have billing entries and completed delivery history.
-All orders have customer accounts, saved addresses, coordinates, and status history. Customers select their delivery address
-at checkout. Address search and map tiles require internet access.
 | restaurant3 | Plateau Pizza owner |
 | restaurant4 | Verdun Bowl owner |
 | restaurant5 | Rosemont Tacos owner |
@@ -23,37 +15,36 @@ at checkout. Address search and map tiles require internet access.
 | operator1 | Operator |
 
 The baseline has six Montreal restaurants (five open and Lachine Bistro paused),
-eight available menu items per restaurant, and 51 orders. Placed, accepted,
-preparing, and ready counts vary by restaurant; each has three delivered orders.
-Vegan Corner also has one picked-up order. Six ready orders start in the waiting queue. `courier1`
-has an offer to accept; `courier2` is carrying an order. Delivered orders have billing entries and completed delivery history.
-All orders have customer accounts, saved addresses, coordinates, and status
-history. Each customer account has a repeatably randomized sample Montreal address.
-Customers must select their delivery address at checkout; it is saved on their account and order. Address search and map tiles require internet access.
+eight menu items each, and 51 sample orders: 11 placed, 8 accepted, 6 preparing,
+7 ready, 1 picked up, and 18 delivered. Six ready orders wait in the dispatch
+queue; `courier1` has one offer and `courier2` is carrying the seeded picked-up
+order. This makes the waiting queue, active offer, and carrying state visible
+immediately after reset. Delivered orders have billing entries and completed
+delivery history. Orders have saved customer addresses, coordinates, and status history.
+Customers select a delivery address at checkout. Address search and map tiles
+require internet access.
 
-Run the backend and frontend as usual. The development console appears at the
-bottom right, stores the last 100 requests per browser tab, and can be collapsed.
-Expand an entry to see its response. Enable **Show GET requests** to include
-successful reads and polling. Account response bodies are hidden.
+The API console appears at the bottom right, stores the last 100 requests per
+browser tab, and can be collapsed. Expand an entry to see its response. Enable
+**Show GET requests** to include successful reads and polling. Account response
+bodies are hidden.
 
-Click **Reset database** next to **Log out** on any dashboard, then confirm.
-This removes all activity and extra accounts and restores the baseline, including
-menus, coordinates, courier availability, and passwords. Baseline account IDs
-are preserved so existing logins remain usable. Refresh other open dashboard
-tabs after a reset to discard any in-progress forms or carts.
+Click **Reset database** as `operator1` to restore the baseline. Reset removes
+activity and extra accounts, then restores the accounts, menus, coordinates,
+courier states, and orders listed above. Baseline account IDs are preserved so
+existing logins remain usable. Refresh other open dashboard tabs after a reset.
 
-To initialize the demo on another checkout:
+To initialize the demo locally on another checkout, run from `backend`:
 
 ```sh
-backend/venv/bin/python backend/manage.py migrate
-backend/venv/bin/python backend/manage.py setup_demo
+python manage.py migrate
+python manage.py setup_demo
 ```
 
 `setup_demo` backs up the local SQLite database to a timestamped file in `/tmp`
 before replacing its data. It creates the ignored `backend/.demo-enabled` marker.
-Reset requires that marker, Django DEBUG mode, an authenticated user, and
-normal cookie authentication/CSRF checks. Remove the marker to disable reset.
-The console is not rendered in production frontend builds.
+Reset requires Django DEBUG mode, that marker, and an operator account. Remove
+the marker to disable reset.
 
 
 ## Running the delivery demo
@@ -63,33 +54,38 @@ frontend supports ports **3000–3007**, each with isolated login cookies. See t
 [README commands](README.md#testing-multiple-accounts-locally). Tabs on the same
 port share a login; all ports use the same backend database.
 
-1. Sign in as `courier2` and confirm delivery of the picked-up order. This frees
-   that courier and triggers dispatch for the oldest waiting ready orders.
-   The dashboard switches to **Offers** and refreshes.
-2. Sign in as `courier1` to accept its seeded offer, confirm pickup, then confirm
-   delivery. Each completion triggers dispatch again.
-3. To demonstrate reassignment, keep the other courier online and without an
-   active offer or delivery. Decline an offer: it goes immediately to the next
-   nearest eligible courier. If all available couriers decline, dispatch starts
-   another round from the nearest available courier. With only one available
-   courier, that courier receives a different queued order first. The same order
-   returns only if no alternative can be assigned. Declining switches the
-   dashboard to **Offers** to show the next offer.
-4. Use a restaurant dashboard to accept placed orders, start preparation, and
-   mark them ready. Waiting orders are processed oldest-ready first; offers go
-   to the nearest eligible idle courier. A courier may have only one active
-   offer or delivery at a time.
-5. Click **Reset database** on any dashboard to restore all 51 seeded orders and
-   the original courier assignments. Refresh the other open dashboards.
+### Happy Path Order
 
-The reset button restores the seed data, not the pre-setup database backup, and
-does not create a new backup. If there are no available couriers, ready orders
-remain queued until the next dispatch trigger.
+1. Sign in as `operator1` and choose **Reset database**.
+2. The reset state already shows ready orders waiting, an offer for `courier1`,
+   and a picked-up order with `courier2`. Accept the `courier1` offer, confirm
+   pickup, and deliver it; then confirm delivery for `courier2`'s order. These
+   actions also trigger retries for the oldest waiting ready orders.
+3. To run a new order through placement and restaurant preparation, sign in as
+   `customer1`, choose an open restaurant, add an available item, select a
+   delivery address, and place the order. The restaurant accepts, prepares, and
+   marks it ready. The dispatcher preserves oldest-ready-first queue order, so
+   earlier seeded ready orders must be processed before this newer order is
+   offered.
+4. After its offer arrives, the courier accepts, confirms pickup, and confirms
+   delivery. Return to the customer account and open the summary. The total uses
+   the pricing values in the Phase III report.
 
-Going offline before pickup releases any accepted delivery assignment. The order
-stays ready and returns to dispatch for another available courier; if none is
-available, it waits in the queue. The old assignment remains in history as
-cancelled. Going offline while carrying food is blocked until delivery is confirmed.
+### No Courier Available
+
+1. Reset again as `operator1`. The reset has six ready orders waiting, one offer
+   assigned to `courier1`, and `courier2` carrying an order. No courier is free
+   for another offer.
+2. Confirm delivery of `courier2`'s order. The courier becomes idle and dispatch
+   retries the queue, offering its oldest ready order.
+3. Decline an offer to return it to dispatch, or accept, pick up, and deliver it
+   to continue draining the queue.
+
+The Reset button is operator-only. It restores the seeded state, not the
+pre-setup database backup, and does not create a new backup. Going offline before
+pickup leaves an accepted assignment in place for operator reassignment; going
+offline while carrying an order is blocked. Declining an offer returns it to
+dispatch without assigning that order to the declining courier.
 
 ## Restaurant map queues
 

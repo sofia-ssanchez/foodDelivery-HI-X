@@ -9,7 +9,7 @@ from orders.event_services import record_order_status_event
 from django.utils import timezone
 from rest_framework.exceptions import APIException, PermissionDenied, ValidationError
 
-from guards.permissions import RequireCourier
+from guards.permissions import RequireCourier, RequireOperator
 from orders.models import Order
 from pricing.services import record_order_ledger
 
@@ -194,16 +194,6 @@ class ChangeDutyCommand(CourierCommand):
             order = Order.objects.select_for_update().get(pk=accepted.order_id)
             if accepted.picked_up_at or order.status == Order.Status.PICKED_UP:
                 raise ValidationError("A courier cannot go off duty while carrying an order.")
-            if not DeliveryAssignment.objects.filter(
-                pk=accepted.pk, status=DeliveryAssignment.Status.ACCEPTED,
-                picked_up_at__isnull=True,
-            ).update(status=DeliveryAssignment.Status.CANCELLED, cancelled_at=timezone.now()):
-                raise DeliveryConflict()
-            _schedule_event(
-                events.delivery_assignment_released,
-                assignment_id=accepted.pk, order_id=accepted.order_id,
-                courier_id=courier.pk,
-            )
 
         if courier.status != Courier.Status.OFFLINE:
             _transition_courier(courier, Courier.Status.OFFLINE)
@@ -348,3 +338,48 @@ class ConfirmDeliveryCommand(AssignmentCommand):
         record_order_ledger(order)
         _schedule_event(events.courier_became_idle, courier_id=courier.id)
         return assignment
+
+
+class ReassignDeliveryCommand:
+    """Let an operator replace an accepted assignment whose courier is offline."""
+
+    def __init__(self, actor, assignment_id, courier_id):
+        self.actor = actor
+        self.assignment_id = assignment_id
+        self.courier_id = courier_id
+
+    @translate_write_races
+    @transaction.atomic
+    def execute(self):
+        if not RequireOperator().has_permission(
+            SimpleNamespace(user=self.actor), None
+        ):
+            raise PermissionDenied("Only active operator accounts can reassign deliveries.")
+
+        try:
+            assignment = DeliveryAssignment.objects.select_for_update().get(
+                pk=self.assignment_id,
+                status=DeliveryAssignment.Status.ACCEPTED,
+                picked_up_at__isnull=True,
+            )
+        except DeliveryAssignment.DoesNotExist:
+            raise DeliveryConflict("This assignment is no longer eligible for reassignment.") from None
+
+        order = Order.objects.select_for_update().get(pk=assignment.order_id)
+        courier = Courier.objects.select_for_update().get(pk=assignment.courier_id)
+        if order.status != Order.Status.READY or courier.status != Courier.Status.OFFLINE:
+            raise ValidationError(
+                "Only a ready order assigned to an offline courier can be reassigned."
+            )
+
+        if not DeliveryAssignment.objects.filter(
+            pk=assignment.pk,
+            status=DeliveryAssignment.Status.ACCEPTED,
+            picked_up_at__isnull=True,
+        ).update(status=DeliveryAssignment.Status.REASSIGNED):
+            raise DeliveryConflict()
+
+        return create_delivery_offer(
+            order_id=order.pk,
+            courier_id=self.courier_id,
+        )

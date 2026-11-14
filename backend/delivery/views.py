@@ -3,7 +3,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from guards.permissions import RequireCourier
+from guards.permissions import RequireCourier, RequireOperator
 from dispatch.events import courier_available_publisher
 
 from .commands import (
@@ -12,9 +12,15 @@ from .commands import (
     ConfirmDeliveryCommand,
     ConfirmPickupCommand,
     DeclineOfferCommand,
+    ReassignDeliveryCommand,
 )
 from .models import Courier, DeliveryAssignment
-from .serializers import CourierSerializer, DeliveryAssignmentSerializer, DutySerializer
+from .serializers import (
+    CourierSerializer,
+    DeliveryAssignmentSerializer,
+    DutySerializer,
+    ReassignDeliverySerializer,
+)
 
 
 class CourierActivityView(APIView):
@@ -89,3 +95,20 @@ class ConfirmPickupView(CourierAssignmentActionView):
 
 class ConfirmDeliveryView(CourierAssignmentActionView):
     command_class = ConfirmDeliveryCommand
+
+
+class OperatorReassignDeliveryView(APIView):
+    permission_classes = [RequireOperator]
+
+    def post(self, request, assignment_id):
+        serializer = ReassignDeliverySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        assignment = ReassignDeliveryCommand(
+            actor=request.user,
+            assignment_id=assignment_id,
+            courier_id=serializer.validated_data["courier_id"],
+        ).execute()
+        assignment = DeliveryAssignment.objects.select_related(
+            "order", "order__restaurant"
+        ).get(pk=assignment.pk)
+        return Response(DeliveryAssignmentSerializer(assignment).data)

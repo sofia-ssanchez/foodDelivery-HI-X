@@ -1,3 +1,5 @@
+import { demoFetch } from "./demo-toasts";
+
 export const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
 let refreshRequest: Promise<void> | null = null;

@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.db import close_old_connections
 from django.test import TestCase, TransactionTestCase
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.test import APIClient
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
@@ -12,8 +12,8 @@ from pricing.models import OrderLedger
 
 from . import events
 from .commands import (
-    ChangeDutyCommand,
     DeliveryConflict,
+    ReassignDeliveryCommand,
     create_delivery_offer,
 )
 from .models import Courier, DeliveryAssignment
@@ -320,7 +320,7 @@ class DeliveryLifecycleTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(Courier.objects.get(pk=self.courier.pk).status, Courier.Status.CARRYING)
 
-    def test_going_offline_releases_accepted_assignment_before_pickup(self):
+    def test_going_offline_keeps_accepted_assignment_for_operator_reassignment(self):
         self.go_on_duty()
         assignment = self.offer()
         response = self.client.post(f"/api/delivery/offers/{assignment.id}/accept/")
@@ -330,16 +330,70 @@ class DeliveryLifecycleTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["status"], Courier.Status.OFFLINE)
         assignment.refresh_from_db()
-        self.assertEqual(assignment.status, DeliveryAssignment.Status.CANCELLED)
-
-        self.assertIsNotNone(assignment.cancelled_at)
+        self.assertEqual(assignment.status, DeliveryAssignment.Status.ACCEPTED)
+        self.assertIsNone(assignment.cancelled_at)
         self.assertEqual(Order.objects.get(pk=assignment.order_id).status, Order.Status.READY)
+        self.assertFalse(
+            DeliveryAssignment.objects.filter(
+                order_id=assignment.order_id,
+                status=DeliveryAssignment.Status.OFFERED,
+            ).exists()
+        )
 
         response = self.client.patch(self.urls["duty"], {"on_duty": True}, format="json")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["status"], Courier.Status.IDLE)
+        self.assertEqual(response.data["status"], Courier.Status.ASSIGNED)
         assignment.refresh_from_db()
-        self.assertEqual(assignment.status, DeliveryAssignment.Status.CANCELLED)
+        self.assertEqual(assignment.status, DeliveryAssignment.Status.ACCEPTED)
+
+    def test_operator_reassignment_replaces_only_an_offline_couriers_accepted_order(self):
+        self.go_on_duty()
+        assignment = self.offer()
+        self.client.post(f"/api/delivery/offers/{assignment.id}/accept/")
+        self.client.patch(self.urls["duty"], {"on_duty": False}, format="json")
+        self.other_courier.status = Courier.Status.IDLE
+        self.other_courier.save(update_fields=["status"])
+
+        with self.assertRaises(PermissionDenied):
+            ReassignDeliveryCommand(
+                actor=self.customer,
+                assignment_id=assignment.id,
+                courier_id=self.other_courier.id,
+            ).execute()
+
+        reassigned = ReassignDeliveryCommand(
+            actor=self.operator,
+            assignment_id=assignment.id,
+            courier_id=self.other_courier.id,
+        ).execute()
+        assignment.refresh_from_db()
+        self.assertEqual(assignment.status, DeliveryAssignment.Status.REASSIGNED)
+        self.assertEqual(reassigned.order_id, assignment.order_id)
+        self.assertEqual(reassigned.courier_id, self.other_courier.id)
+        self.assertEqual(reassigned.status, DeliveryAssignment.Status.OFFERED)
+
+    def test_operator_reassignment_is_exposed_as_an_operator_only_endpoint(self):
+        self.go_on_duty()
+        assignment = self.offer()
+        self.client.post(f"/api/delivery/offers/{assignment.id}/accept/")
+        self.client.patch(self.urls["duty"], {"on_duty": False}, format="json")
+        Courier.objects.filter(pk=self.other_courier.pk).update(status=Courier.Status.IDLE)
+        response = self.client.post(
+            f"/api/delivery/operator/assignments/{assignment.id}/reassign/",
+            {"courier_id": self.other_courier.id},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 403)
+
+        operator_client = APIClient()
+        operator_client.force_authenticate(self.operator)
+        response = operator_client.post(
+            f"/api/delivery/operator/assignments/{assignment.id}/reassign/",
+            {"courier_id": self.other_courier.id},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data["status"], DeliveryAssignment.Status.OFFERED)
 
     def test_pickup_then_delivery_use_order_transitions_and_record_ledger_once(self):
         self.go_on_duty()
@@ -480,7 +534,11 @@ class ConcurrentDeliveryActionTests(TransactionTestCase):
         OrderLine.objects.create(
             order=self.order, menu_item=item, quantity=1, unit_price=item.price
         )
-        ChangeDutyCommand(actor=self.courier_user, on_duty=True).execute()
+        # This concurrency fixture creates its own offer below. Set the seeded
+        # courier idle directly so the real availability hook does not dispatch
+        # the ready order before the test arranges its simultaneous requests.
+        Courier.objects.filter(pk=self.courier.pk).update(status=Courier.Status.IDLE)
+        self.courier.refresh_from_db()
         self.assignment = create_delivery_offer(
             order_id=self.order.id,
             courier_id=self.courier.id,

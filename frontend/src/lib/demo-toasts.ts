@@ -38,7 +38,6 @@ export function clearToasts() { update([]); }
 
 /** Demo-only response reporting; clone bodies so callers can still consume them. */
 export async function demoFetch(input: string | URL, init: RequestInit = {}): Promise<Response> {
-  if (process.env.NODE_ENV === "production") return fetch(input, init);
   const method = (init.method || "GET").toUpperCase();
   const path = new URL(input.toString()).pathname;
   const publish = (status: number | null, label: string, body: string) => {

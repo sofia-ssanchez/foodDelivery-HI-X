@@ -53,15 +53,6 @@ def reset_demo():
             ('Chickpea Curry', '15.00'), ('Tempeh Sandwich', '11.50'),
             ('Garden Salad', '8.00'), ('Roasted Potatoes', '5.00'),
             ('Vegan Cheesecake', '6.50'), ('Lemonade', '4.00')]),
-    ]
-    for index, (name, lat, lng, menu) in enumerate(menus, 1):
-        restaurant = Restaurant.objects.create(name=name, owner=users[f'restaurant{index}'],
-            status='open', latitude=lat, longitude=lng)
-        MenuItem.objects.bulk_create([MenuItem(restaurant=restaurant, name=item, price=price,
-            status='available') for item, price in menu])
-        Courier.objects.update_or_create(user=users[f'courier{index}'], defaults={'status': 'idle', 'latitude': lat, 'longitude': lng})
-    count = seed_demo_orders()
-    return {'detail': 'Demo reset complete.', 'restaurants': 2, 'couriers': 2, 'customers': 6, 'orders': count}
         ('Plateau Pizza', '45.530500', '-73.583200', [
             ('Margherita Pizza', '16.00'), ('Mushroom Pizza', '18.00'),
             ('Pesto Pizza', '18.50'), ('Roasted Pepper Pizza', '17.50'),
@@ -87,7 +78,7 @@ def reset_demo():
         restaurant = Restaurant.objects.create(name=name, owner=users[f'restaurant{index}'],
             status='paused' if index == 6 else 'open', latitude=lat, longitude=lng)
         MenuItem.objects.bulk_create([MenuItem(restaurant=restaurant, name=item, price=price,
-            status='available') for item, price in menu])
+            status='sold_out' if item == 'Chocolate Brownie' else 'available') for item, price in menu])
         if index <= 2:
             Courier.objects.update_or_create(user=users[f'courier{index}'], defaults={'status': 'idle', 'latitude': lat, 'longitude': lng})
     count = seed_demo_orders()
@@ -110,28 +101,6 @@ def seed_demo_orders():
         if created:
             user.set_password('12345678')
             user.save()
-    restaurants = [Restaurant.objects.get(owner__username=f'restaurant{i}') for i in (1, 2)]
-    couriers = [Courier.objects.get(user__username=f'courier{i}') for i in (1, 2)]
-    if DeliveryAssignment.objects.filter(courier__in=couriers, status__in=['offered', 'accepted']).exists():
-        raise ValueError('Demo couriers already have active deliveries; use Reset demo to restore the seeded baseline.')
-    destinations = [
-        ('1455 Boulevard de Maisonneuve Ouest, Montreal', '45.497300', '-73.578900'),
-        ('845 Rue Sherbrooke Ouest, Montreal', '45.504800', '-73.577200'),
-        ('175 Rue Sainte-Catherine Ouest, Montreal', '45.508200', '-73.566400'),
-        ('475 Avenue du President-Kennedy, Montreal', '45.508600', '-73.571000'),
-        ('350 Rue Saint-Paul Est, Montreal', '45.509500', '-73.551500'),
-        ('1200 Rue de Bleury, Montreal', '45.505900', '-73.564200'),
-    ]
-    scenarios = [('delivered', 3, 0), ('delivered', 4, 1), ('ready', 1, 0),
-                 ('picked_up', 2, 1), ('preparing', 5, 0), ('preparing', 6, 1),
-                 ('placed', 3, 0), ('placed', 4, 1)]
-    stages = ['placed', 'accepted', 'preparing', 'ready', 'picked_up', 'delivered']
-    for index, (status, customer_number, restaurant_index) in enumerate(scenarios):
-        restaurant = restaurants[restaurant_index]
-        courier = couriers[restaurant_index]
-        customer = User.objects.get(username=f'customer{customer_number}')
-        address, lat, lng = destinations[customer_number - 1]
-        start = timezone.now() - timedelta(minutes=90 - index * 5)
     restaurants = [Restaurant.objects.get(owner__username=f'restaurant{i}') for i in range(1, 7)]
     couriers = [Courier.objects.get(user__username=f'courier{i}') for i in (1, 2)]
     if DeliveryAssignment.objects.filter(courier__in=couriers, status__in=['offered', 'accepted']).exists():
@@ -179,7 +148,6 @@ def seed_demo_orders():
             actor = customer if step == 0 else courier.user if step >= 4 else restaurant.owner
             event = record_order_status_event(order, stages[step - 1] if step else '', stage, actor)
             OrderStatusEvent.objects.filter(pk=event.pk).update(timestamp=start + timedelta(minutes=[0, 3, 5, 15, 20, 30][step]))
-        if final_stage >= 3:
         should_offer = status == 'ready' and restaurant_index == 0 and courier.pk not in offered_couriers
         if status in ('picked_up', 'delivered') or should_offer:
             if should_offer:

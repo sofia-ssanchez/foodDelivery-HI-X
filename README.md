@@ -22,7 +22,8 @@ docker compose up --build
 The first command copies the example settings into a local `.env` file. If you
 already have a `.env` file, keep it and do not overwrite it. The second command
 builds the backend and frontend images, starts both services, applies Django
-migrations, and loads the demo data.
+migrations, and loads the initial data the first time the Docker database is
+created. Later starts keep the existing database and demo activity.
 
 When the services are ready, open:
 
@@ -59,9 +60,21 @@ run in the background until you stop them with `docker compose down`.
 ### The `seed_data` management command
 
 The backend includes a custom Django management command named `seed_data`.
-Compose runs it automatically after migrations whenever the backend starts.
-The command is safe to run again: it creates missing demo records and keeps
-existing records instead of making a second copy of them.
+On a fresh Docker volume, Compose runs migrations, runs `seed_data`, and then
+loads the repeatable Phase III demo state with `setup_demo`. This happens only
+for a new database; normal restarts keep seeded data and later demo activity.
+
+The Phase III demo accounts use the password `12345678`. For example, sign in
+as `operator1` to access reset and operator actions, `customer1` to place an
+order, `restaurant1` to prepare it, or `courier1` to accept and deliver it.
+
+The demo reset action is available to operator accounts only. After signing in
+as an operator, choose **Reset database** to restore the six-restaurant Phase
+III demo scenario data. It includes six unassigned ready orders in the dispatch
+queue, one offered order, and one courier carrying an order, so the TA can
+inspect both waiting and active delivery states immediately. Reset also
+supports the Happy Path, No Courier Available, and Sold Out/Paused use cases
+without deleting the Docker volume.
 
 If you run the backend locally, run the command from the `backend` folder:
 
@@ -86,6 +99,11 @@ To run either command in a running Docker backend container, use:
 docker compose exec backend python manage.py seed_data
 docker compose exec backend python manage.py seed_data --restore-baseline
 ```
+
+For a local backend, run `python manage.py seed_data` and then
+`python manage.py setup_demo` after migrations if you want the same Phase III
+demo accounts and operator reset action. `setup_demo` backs up the current
+local SQLite database before replacing its data with the demo baseline.
 
 ## Run the backend locally
 
@@ -207,7 +225,8 @@ docker compose up
 ```
 
 The database volume persists across normal stops and container recreation.
-Migrations and the idempotent seed command run at each backend start.
+Migrations run at each backend start; initial data is seeded only when the
+volume has not been initialized yet.
 
 To restore the initial demo state, remove the database volume and recreate the
 stack:
@@ -219,8 +238,8 @@ docker compose up --build
 
 This deletes all data stored in the Compose database volume, including changes
 made during the demo. The next startup creates a fresh database, applies all
-migrations, and reloads the seed data. This is the reliable full-reset
-procedure.
+migrations, runs the seed command, and restores the Phase III demo baseline.
+This is the reliable full-reset procedure.
 
 ## Testing and linting
 

@@ -24,7 +24,7 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch(
+      const response = await demoFetch(
         `${API_BASE}/api/accounts/login/`,
         {
           method: "POST",

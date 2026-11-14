@@ -6,6 +6,8 @@ from django.test import TestCase
 from django.urls import reverse
 from rest_framework.test import APIClient
 
+from delivery.models import DeliveryAssignment
+
 from .address_lookup import SALT
 from .demo import reset_demo
 from .demo_addresses import MONTREAL_ADDRESSES
@@ -60,6 +62,26 @@ class DemoSeedTests(TestCase):
         for _ in range(2):
             result = reset_demo()
             self.assertEqual(result["orders"], 51)
+            self.assertEqual(
+                Order.objects.filter(status=Order.Status.READY).count(), 7
+            )
+            self.assertEqual(
+                DeliveryAssignment.objects.filter(
+                    status=DeliveryAssignment.Status.OFFERED
+                ).count(),
+                1,
+            )
+            self.assertEqual(
+                Order.objects.filter(status=Order.Status.READY)
+                .exclude(
+                    delivery_assignments__status__in=(
+                        DeliveryAssignment.Status.OFFERED,
+                        DeliveryAssignment.Status.ACCEPTED,
+                    )
+                )
+                .count(),
+                6,
+            )
             customers = get_user_model().objects.filter(role="customer").order_by("username")
             addresses = list(customers.values_list("delivery_address", flat=True))
             self.assertEqual(len(set(addresses)), 6)
@@ -77,6 +99,29 @@ class DemoSeedTests(TestCase):
             actual = {point["label"]: (point["restaurant"]["queued"], point["restaurant"]["queue_color"])
                       for point in response.data["points"] if "restaurant" in point}
             self.assertEqual(actual, expected)
+
+    @patch("orders.demo.demo_enabled", return_value=True)
+    def test_reset_endpoint_is_operator_only_and_operator_can_reset(self, enabled):
+        User = get_user_model()
+        customer = User.objects.create_user(username="reset-customer", role="customer")
+        restaurant_user = User.objects.create_user(
+            username="reset-restaurant", role="restaurant"
+        )
+        courier = User.objects.create_user(username="reset-courier", role="courier")
+        operator = User.objects.create_user(username="reset-operator", role="operator")
+
+        for user in (customer, restaurant_user, courier):
+            client = APIClient()
+            client.force_authenticate(user)
+            response = client.post(reverse("demo-reset"))
+            self.assertEqual(response.status_code, 403)
+
+        client = APIClient()
+        client.force_authenticate(operator)
+        response = client.post(reverse("demo-reset"))
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data["restaurants"], 6)
+        self.assertEqual(response.data["couriers"], 2)
 
     def test_standard_seed_populates_customer_and_order_addresses(self):
         from io import StringIO

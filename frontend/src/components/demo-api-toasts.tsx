@@ -16,7 +16,7 @@ export default function DemoApiToasts() {
   useEffect(() => { restoreToasts(); }, []);
   useEffect(() => {
     let cancelled = false;
-    if (process.env.NODE_ENV !== "production" && pathname.startsWith("/dashboard")) {
+    if (pathname.startsWith("/dashboard")) {
       apiFetch("/api/accounts/me/").then(async (response) => {
         const account = response.ok ? await response.json() : null;
         if (!cancelled) setOperator(account?.role === "operator");
@@ -24,7 +24,6 @@ export default function DemoApiToasts() {
     }
     return () => { cancelled = true; };
   }, [pathname]);
-  if (process.env.NODE_ENV === "production") return null;
   const visible = entries.filter((entry) => reads || entry.method !== "GET" || entry.status === null || entry.status >= 400);
   async function reset() {
     if (!window.confirm("Reset demo? All orders, deliveries, refunds, and extra accounts will be removed.")) return;
