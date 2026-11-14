@@ -214,7 +214,7 @@ class MapLocationView(APIView):
 
 
 class DemoResetView(APIView):
-    permission_classes = [RequireAuth]
+    permission_classes = [RequireOperator]
 
     def post(self, request):
         from .demo import reset_demo

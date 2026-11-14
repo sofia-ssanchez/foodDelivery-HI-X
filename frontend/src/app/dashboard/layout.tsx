@@ -1,13 +1,23 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { apiFetch, logout } from "@/lib/api";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
 
+  const [operator, setOperator] = useState(false);
   const [resetting, setResetting] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiFetch("/api/accounts/me/")
+      .then(async (response) => response.ok ? response.json() : null)
+      .then((account) => { if (!cancelled) setOperator(account?.role === "operator"); })
+      .catch(() => { if (!cancelled) setOperator(false); });
+    return () => { cancelled = true; };
+  }, []);
 
   async function handleReset() {
     if (pending || resetting) return;
@@ -51,7 +61,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           <p className="text-2xl sm:text-3xl font-semibold tracking-tight" style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}>Five Leaf Clover</p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <button type="button" className="btn btn-primary" disabled={pending || resetting} onClick={() => void handleReset()}>{resetting ? "Resetting…" : "Reset database"}</button>
+          {operator && <button type="button" className="btn btn-primary" disabled={pending || resetting} onClick={() => void handleReset()}>{resetting ? "Resetting…" : "Reset database"}</button>}
         <button type="button" className="btn btn-secondary" disabled={pending || resetting} onClick={() => void handleLogout()}>{pending ? "Logging out…" : "Log out"}</button>
         </div>
       </div>
