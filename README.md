@@ -160,11 +160,13 @@ then run:
 cd frontend
 npm ci
 npm run dev
+
 ```
 
 `npm ci` installs the exact frontend dependencies recorded in
 `frontend/package-lock.json`. When Next.js says it is ready, open
 <http://localhost:3000>. Keep both the backend and frontend terminals running.
+`npm install leaflet` to add live map dashboard.
 
 The frontend API address defaults to `http://localhost:8000`. To use a
 different backend address during local development, create
@@ -256,3 +258,25 @@ Run frontend linting from the `frontend` folder:
 npm run lint
 ```
 
+
+
+### Stalled delivery offers
+
+Unanswered offers expire after 120 seconds. The stalled-order observer retries
+dispatch after expiration commits; the previous courier is excluded for a
+120-second cooldown. Accepted deliveries are not expired. Waiting orders retain
+their original ready time.
+
+Docker Compose starts a separate dispatch worker after the backend is healthy.
+For local development, migrate first, then run the worker in a second terminal:
+
+```sh
+cd backend
+python manage.py migrate
+python manage.py check_stalled_orders --loop --interval 30
+```
+
+Omit `--loop` to run a single sweep (for example, from cron). Configure
+`DISPATCH_OFFER_TIMEOUT_SECONDS` and `DISPATCH_EXPIRED_COOLDOWN_SECONDS` through
+environment variables on the backend and worker. Expiration occurs on the next
+sweep after the deadline; the worker must be running for automatic recovery.
