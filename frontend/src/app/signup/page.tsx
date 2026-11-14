@@ -22,7 +22,7 @@ export default function SignupPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch(
+      const response = await demoFetch(
         `${API_BASE}/api/accounts/signup/`,
         {
           method: "POST",
