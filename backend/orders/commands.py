@@ -20,6 +20,7 @@ class OrderCommand(ABC):
         raise NotImplementedError
 
 
+
 class PlaceOrderCommand(OrderCommand):
     def __init__(self, customer, restaurant_id, items, delivery_address_token="", delivery_unit=""):
         self.customer = customer
@@ -30,13 +31,24 @@ class PlaceOrderCommand(OrderCommand):
 
     @transaction.atomic
     def execute(self):
+        self._validate_customer()
+        location = read_checkout_address(self.delivery_address_token, self.customer.pk)
+        restaurant = self._get_restaurant()
+        order_lines = self._prepare_order_lines(restaurant)
+        order = self._create_order(restaurant, location)
+        self._update_customer_address(order)
+        self._record_placement(order)
+        self._create_order_lines(order, order_lines)
+        return order
+
+    def _validate_customer(self):
         if (
             not self.customer.is_active
             or self.customer.role != self.customer.Role.CUSTOMER
         ):
             raise PermissionDenied("Only customers can place orders.")
-        location = read_checkout_address(self.delivery_address_token, self.customer.pk)
 
+    def _get_restaurant(self):
         try:
             restaurant = Restaurant.objects.get(id=self.restaurant_id)
         except Restaurant.DoesNotExist:
@@ -45,6 +57,9 @@ class PlaceOrderCommand(OrderCommand):
         if restaurant.status != Restaurant.Status.OPEN:
             raise ValidationError("Restaurant is not open for orders.")
 
+        return restaurant
+
+    def _prepare_order_lines(self, restaurant):
         order_lines = []
 
         for item in self.items:
@@ -71,7 +86,10 @@ class PlaceOrderCommand(OrderCommand):
                 }
             )
 
-        order = Order.objects.create(
+        return order_lines
+
+    def _create_order(self, restaurant, location):
+        return Order.objects.create(
             customer=self.customer,
             delivery_address=location["address"],
             delivery_unit=self.delivery_unit,
@@ -81,7 +99,7 @@ class PlaceOrderCommand(OrderCommand):
             status=Order.Status.PLACED,
         )
 
-        # Remember the last confirmed destination; each order keeps its own snapshot.
+    def _update_customer_address(self, order):
         self.customer.delivery_address = order.delivery_address
         self.customer.delivery_unit = order.delivery_unit
         self.customer.delivery_latitude = order.delivery_latitude
@@ -90,7 +108,7 @@ class PlaceOrderCommand(OrderCommand):
             "delivery_address", "delivery_unit", "delivery_latitude", "delivery_longitude",
         ])
 
-        # Record the initial order placement.
+    def _record_placement(self, order):
         record_order_status_event(
             order=order,
             from_status="",
@@ -98,10 +116,11 @@ class PlaceOrderCommand(OrderCommand):
             actor=self.customer,
         )
 
+    def _create_order_lines(self, order, order_lines):
         for line in order_lines:
             OrderLine.objects.create(order=order, **line)
 
-        return order
+
 
 
 class RestaurantMenuCommand(OrderCommand):
