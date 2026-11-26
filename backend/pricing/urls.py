@@ -2,7 +2,6 @@ from django.urls import path
 
 from .views import (
     OrderSummaryView,
-    CheckoutQuoteView,
     OperatorLedgerView,
     CustomerRefundRequestView,
     OperatorRefundRequestListView,
@@ -10,7 +9,6 @@ from .views import (
 )
 
 urlpatterns = [
-    path("checkout/quote/", CheckoutQuoteView.as_view(), name="checkout-quote"),
     path(
         "orders/<int:order_id>/summary/",
         OrderSummaryView.as_view(),

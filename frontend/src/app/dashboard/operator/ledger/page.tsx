@@ -30,8 +30,6 @@ type LedgerEntry = {
   delivery_fee: string;
   service_fee: string;
   small_order_surcharge: string;
-  promo_code: string;
-  discount: string;
   total_charge: string;
   refunds: RefundEntry[];
   total_refunded: string;
@@ -401,12 +399,6 @@ export default function LedgerPage() {
                         </span>
                         <span>{money(entry.small_order_surcharge)}</span>
                       </div>
-                      {entry.promo_code && (
-                        <div className="flex justify-between gap-4">
-                          <span>Promo ({entry.promo_code})</span>
-                          <span>−{money(entry.discount)}</span>
-                        </div>
-                      )}
 
                       <div className="flex justify-between gap-4 border-t border-[var(--color-border)] pt-4">
                         <span className="font-bold">

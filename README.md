@@ -280,4 +280,3 @@ Omit `--loop` to run a single sweep (for example, from cron). Configure
 `DISPATCH_OFFER_TIMEOUT_SECONDS` and `DISPATCH_EXPIRED_COOLDOWN_SECONDS` through
 environment variables on the backend and worker. Expiration occurs on the next
 sweep after the deadline; the worker must be running for automatic recovery.
-

@@ -3,6 +3,7 @@
 from django.test import TestCase
 from django.utils import timezone
 from datetime import timedelta
+
 from accounts.models import User
 from orders.commands import MarkOrderReadyCommand
 from orders.models import Order, Restaurant
@@ -10,16 +11,6 @@ from delivery.models import Courier, DeliveryAssignment
 from rest_framework.test import APIClient
 from .services import OrderQueueService
 from .events import courier_available_publisher
-from delivery.commands import expire_delivery_offer
-from .tasks import check_stalled_orders
-from .events import dispatcher
-from delivery.commands import AcceptOfferCommand, expire_delivery_offer
-from delivery.commands import AcceptOfferCommand, DeliveryConflict, expire_delivery_offer
-from unittest.mock import patch
-from delivery.commands import DeliveryConflict, expire_delivery_offer
-from io import StringIO
-from django.core.management import call_command
-from django.core.management.base import CommandError
 
 
 def make_courier(username, longitude):
@@ -216,6 +207,7 @@ class StalledOrderTests(TestCase):
         )
 
     def test_expiration_notifies_after_commit_and_reoffers(self):
+        from delivery.commands import expire_delivery_offer
         other = make_courier("stalled-far", 2)
         ready_at = self.order.ready_at
         with self.captureOnCommitCallbacks(execute=True) as callbacks:
@@ -236,6 +228,8 @@ class StalledOrderTests(TestCase):
         self.assertEqual(self.order.ready_at, ready_at)
 
     def test_cooldown_keeps_order_waiting_then_sweep_retries(self):
+        from .tasks import check_stalled_orders
+        from .events import dispatcher
         with self.captureOnCommitCallbacks(execute=True):
             self.assertEqual(check_stalled_orders(), 1)
         self.assertTrue(OrderQueueService().get_waiting_orders().filter(pk=self.order.pk).exists())
@@ -249,6 +243,7 @@ class StalledOrderTests(TestCase):
         ).courier, self.courier)
 
     def test_accepted_offer_is_not_expired(self):
+        from delivery.commands import AcceptOfferCommand, expire_delivery_offer
         AcceptOfferCommand(self.courier.user, self.offer.pk).execute()
         self.assertFalse(expire_delivery_offer(
             assignment_id=self.offer.pk, cutoff=timezone.now(),
@@ -257,6 +252,7 @@ class StalledOrderTests(TestCase):
         self.assertEqual(self.offer.status, DeliveryAssignment.Status.ACCEPTED)
 
     def test_expired_offer_cannot_be_accepted_and_expiration_is_idempotent(self):
+        from delivery.commands import AcceptOfferCommand, DeliveryConflict, expire_delivery_offer
         self.assertTrue(expire_delivery_offer(
             assignment_id=self.offer.pk, cutoff=timezone.now(),
         ))
@@ -267,12 +263,15 @@ class StalledOrderTests(TestCase):
             AcceptOfferCommand(self.courier.user, self.offer.pk).execute()
 
     def test_fresh_offer_is_not_expired(self):
+        from delivery.commands import expire_delivery_offer
         self.assertFalse(expire_delivery_offer(
             assignment_id=self.offer.pk,
             cutoff=timezone.now() - timedelta(minutes=4),
         ))
 
     def test_sweep_respects_configured_timeout_and_exact_deadline(self):
+        from unittest.mock import patch
+        from .tasks import check_stalled_orders
 
         now = timezone.now()
         with self.settings(DISPATCH_OFFER_TIMEOUT_SECONDS=300):
@@ -290,6 +289,9 @@ class StalledOrderTests(TestCase):
                 self.assertEqual(self.offer.status, DeliveryAssignment.Status.EXPIRED)
 
     def test_sweep_continues_after_conflict_and_retries_waiting_queue(self):
+        from unittest.mock import patch
+        from delivery.commands import DeliveryConflict, expire_delivery_offer
+        from .tasks import check_stalled_orders
 
         other = make_courier("stalled-other", 2)
         second_order = Order.objects.create(
@@ -325,6 +327,7 @@ class StalledOrderTests(TestCase):
             self.assertEqual(check_stalled_orders(), 1)
 
     def test_sweep_assigns_waiting_orders_oldest_first_without_expirations(self):
+        from .tasks import check_stalled_orders
 
         DeliveryAssignment.objects.filter(pk=self.offer.pk).update(
             status=DeliveryAssignment.Status.DECLINED,
@@ -343,6 +346,9 @@ class StalledOrderTests(TestCase):
 
 class StalledOrderCommandTests(TestCase):
     def test_single_sweep_reports_count_without_sleeping(self):
+        from io import StringIO
+        from unittest.mock import patch
+        from django.core.management import call_command
 
         output = StringIO()
         target = "dispatch.management.commands.check_stalled_orders"
@@ -354,6 +360,9 @@ class StalledOrderCommandTests(TestCase):
         self.assertIn("Expired 2 offer(s).", output.getvalue())
 
     def test_loop_repeats_and_stops_cleanly_on_interrupt(self):
+        from io import StringIO
+        from unittest.mock import patch
+        from django.core.management import call_command
 
         output = StringIO()
         target = "dispatch.management.commands.check_stalled_orders"
@@ -368,6 +377,9 @@ class StalledOrderCommandTests(TestCase):
         self.assertIn("Stopped stalled-order worker.", output.getvalue())
 
     def test_nonpositive_interval_is_rejected_before_sweep(self):
+        from unittest.mock import patch
+        from django.core.management import call_command
+        from django.core.management.base import CommandError
 
         target = "dispatch.management.commands.check_stalled_orders.check_stalled_orders"
         with patch(target) as sweep:
