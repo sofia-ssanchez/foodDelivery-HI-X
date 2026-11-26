@@ -52,6 +52,8 @@ class OrderSummaryView(APIView):
             "delivery_fee": str(pricing["delivery_fee"]),
             "service_fee": str(pricing["service_fee"]),
             "small_order_surcharge": str(pricing["small_order_surcharge"]),
+            "promo_code": pricing["promo_code"],
+            "discount": str(pricing["discount"]),
             "total": str(pricing["total"])
         })
 
@@ -150,6 +152,8 @@ class OperatorLedgerView(APIView):
 
             # Original charge is never modified.
             "total_charge": str(entry.total_charge),
+            "promo_code": entry.promo_code,
+            "discount": str(entry.discount),
 
             # Separate refund transactions.
             "refunds": self._serialize_refunds(entry),
@@ -316,3 +320,19 @@ class OperatorRefundDecisionView(APIView):
             "decision_notes": refund_request.decision_notes,
             "decided_at": refund_request.decided_at,
         })
+
+
+class CheckoutQuoteView(APIView):
+    permission_classes = [RequireCustomer]
+
+    def post(self, request):
+        from orders.serializers import CheckoutQuoteSerializer
+        from orders.checkout import get_checkout_restaurant, prepare_checkout_lines
+        from .services import calculate_line_pricing
+        serializer = CheckoutQuoteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        restaurant = get_checkout_restaurant(data["restaurant_id"])
+        lines = prepare_checkout_lines(restaurant, data["items"])
+        pricing = calculate_line_pricing(lines, data["promo_code"])
+        return Response({key: str(value) for key, value in pricing.items()})

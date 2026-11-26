@@ -45,6 +45,7 @@ class PlaceOrderView(generics.CreateAPIView):
             items=serializer.validated_data["items"],
             delivery_address_token=serializer.validated_data["delivery_address_token"],
             delivery_unit=serializer.validated_data.get("delivery_unit", ""),
+            promo_code=serializer.validated_data.get("promo_code", ""),
         )
 
         order = command.execute()
@@ -53,6 +54,7 @@ class PlaceOrderView(generics.CreateAPIView):
             {
                 "id": order.id,
                 "restaurant_id": order.restaurant_id,
+                "pricing": order.pricing_snapshot,
                 "status": order.status,
             },
             status=status.HTTP_201_CREATED,

@@ -30,15 +30,26 @@ def load_pricing_config():
 
 
 def calculate_order_pricing(order):
+    snapshot = getattr(order, "pricing_snapshot", None)
+    if snapshot:
+        return {key: value if key == "promo_code" else money(value) for key, value in snapshot.items()}
+    return calculate_line_pricing([
+        {"quantity": line.quantity, "unit_price": line.unit_price}
+        for line in order.lines.all()
+    ])
+
+
+def calculate_line_pricing(lines, promo_code=""):
+    from promotions.services import validate_promo_code
     config = load_pricing_config()
 
     subtotal = Decimal("0.00")
 
-    for line in order.lines.all():
-        if line.quantity <= 0 or line.unit_price < 0:
+    for line in lines:
+        if line["quantity"] <= 0 or line["unit_price"] < 0:
             raise ValueError("Invalid order line")
 
-        subtotal += line.unit_price * line.quantity
+        subtotal += line["unit_price"] * line["quantity"]
 
     subtotal = money(subtotal)
 
@@ -51,9 +62,9 @@ def calculate_order_pricing(order):
     if subtotal < threshold:
         surcharge = money(config["small_order_surcharge"])
 
-    total = money(
-        subtotal + delivery_fee + service_fee + surcharge
-    )
+    promo_code, discount = validate_promo_code(promo_code, subtotal)
+    discount = money(discount)
+    total = money(subtotal + delivery_fee + service_fee + surcharge - discount)
 
     return {
         "subtotal": subtotal,
@@ -61,6 +72,8 @@ def calculate_order_pricing(order):
         "service_fee": service_fee,
         "small_order_surcharge": surcharge,
         "total": total,
+        "promo_code": promo_code,
+        "discount": discount,
     }
 
 
@@ -84,6 +97,8 @@ def record_order_ledger(order):
             "service_fee": pricing["service_fee"],
             "small_order_surcharge": pricing["small_order_surcharge"],
             "total_charge": pricing["total"],
+            "promo_code": pricing["promo_code"],
+            "discount": pricing["discount"],
         },
     )
 

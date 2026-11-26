@@ -280,3 +280,45 @@ Omit `--loop` to run a single sweep (for example, from cron). Configure
 `DISPATCH_OFFER_TIMEOUT_SECONDS` and `DISPATCH_EXPIRED_COOLDOWN_SECONDS` through
 environment variables on the backend and worker. Expiration occurs on the next
 sweep after the deadline; the worker must be running for automatic recovery.
+
+
+## Checkout promo codes
+
+Run `python manage.py migrate` from `backend` after pulling this change.
+Predefined codes live in `backend/config/promotions.json`; no user role can
+create or edit codes through the application.
+
+| Code | Discount | Minimum item subtotal | Expiry |
+| --- | --- | --- | --- |
+| WELCOME5 | $5.00 | $20.00 | December 31, 2027, 23:59:59 Eastern |
+| FEAST10 | $10.00 | $40.00 | December 31, 2027, 23:59:59 Eastern |
+| SAVE10 | 10% | $15.00 | December 31, 2027, 23:59:59 Eastern |
+| FEAST20 | 20% | $40.00 | December 31, 2027, 23:59:59 Eastern |
+| EXPIRED5 | $5.00 | $20.00 | January 1, 2026 (expired example) |
+
+At checkout, enter one code and click **Apply**. Codes are case-insensitive.
+The server returns a confirmation and discounted total, or a specific error
+for an unknown code, expiry, or insufficient spend. Remove the code to continue
+without it. Cart changes refresh the quote and revalidate the applied code.
+
+Codes have a `type` of `fixed` (dollar amount) or `percentage` (for example,
+`"discount": "10"` means 10%). Percentage savings are calculated on the item
+subtotal and rounded to cents using the existing pricing service.
+
+Minimum spend uses the item subtotal before fees and discounts. Discounts reduce
+that subtotal, never below zero; delivery/service fees and the small-order
+surcharge remain unchanged. The small-order threshold uses the original subtotal.
+Codes may be used on multiple orders; only one code applies to each order.
+
+`POST /api/pricing/checkout/quote/` accepts `restaurant_id`, `items`, and optional
+`promo_code`. Prices come from the server's menu records. Placing an order validates
+the code again, then saves the complete pricing snapshot. Summary and ledger
+calculations preserve that amount even after a code expires or configuration
+changes. Refunds cannot exceed the discounted charge. Existing orders without a
+snapshot retain their previous pricing behaviour.
+
+Implementation reuses `money()`, `load_pricing_config()`,
+`calculate_order_pricing()`, `record_order_ledger()`, and the existing refund
+services in `pricing/services.py`. `calculate_line_pricing()` is their shared
+calculation for cart previews and placement; `promotions/services.py` owns promo
+validation. Restaurant and menu validation is shared in `orders/checkout.py`.
