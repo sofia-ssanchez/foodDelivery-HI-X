@@ -74,6 +74,15 @@ class PricingTests(SimpleTestCase):
 class OrderSummaryTests(TestCase):
 
     def setUp(self):
+        # Keep response expectations independent of deployment pricing settings.
+        config_patch = patch("pricing.services.load_pricing_config", return_value={
+            "delivery_fee": "3.99",
+            "service_fee": "1.50",
+            "small_order_threshold": "15.00",
+            "small_order_surcharge": "2.00",
+        })
+        config_patch.start()
+        self.addCleanup(config_patch.stop)
         User = get_user_model()
 
         self.customer = User.objects.create_user(
@@ -119,6 +128,7 @@ class OrderSummaryTests(TestCase):
         self.url = f"/api/pricing/orders/{self.order.id}/summary/"
 
     def test_delivered_order_summary(self):
+        # Check delivered order totals.
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 200)
@@ -127,6 +137,7 @@ class OrderSummaryTests(TestCase):
         self.assertEqual(response.data["items"][0]["quantity"], 2)
 
     def test_summary_before_delivery(self):
+        # Block summaries before delivery.
         self.order.status = "ready"
         self.order.save()
 
@@ -135,6 +146,7 @@ class OrderSummaryTests(TestCase):
         self.assertEqual(response.status_code, 409)
 
     def test_customer_cannot_view_other_orders(self):
+        # Hide other customers' orders.
         User = get_user_model()
 
         other_customer = User.objects.create_user(
@@ -148,3 +160,129 @@ class OrderSummaryTests(TestCase):
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 404)
+
+    def test_complete_summary_response(self):
+        # Verify every response field.
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {
+            "order_id": self.order.id,
+            "restaurant": "Green Garden",
+            "status": "delivered",
+            "created_at": self.order.created_at.isoformat().replace("+00:00", "Z"),
+            "items": [{
+                "name": "Vegan Burger",
+                "quantity": 2,
+                "unit_price": "12.00",
+                "line_total": "24.00",
+            }],
+            "subtotal": "24.00",
+            "delivery_fee": "3.99",
+            "service_fee": "1.50",
+            "small_order_surcharge": "0.00",
+            "total": "29.49",
+        })
+
+    def test_refunded_statuses_allow_summary(self):
+        # Allow summaries after refunds.
+        for order_status in (Order.Status.PARTIALLY_REFUNDED, Order.Status.REFUNDED):
+            with self.subTest(status=order_status):
+                self.order.status = order_status
+                self.order.save()
+
+                response = self.client.get(self.url)
+
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.data["status"], order_status)
+                self.assertEqual(response.data["total"], "29.49")
+
+    def test_all_non_summary_statuses_return_conflict(self):
+        # Reject all unsupported statuses.
+        for order_status in (
+            Order.Status.PLACED, Order.Status.ACCEPTED, Order.Status.REJECTED,
+            Order.Status.PREPARING, Order.Status.READY, Order.Status.PICKED_UP,
+            Order.Status.CANCELLED,
+        ):
+            with self.subTest(status=order_status):
+                self.order.status = order_status
+                self.order.save()
+
+                response = self.client.get(self.url)
+
+                self.assertEqual(response.status_code, 409)
+                self.assertEqual(response.json(), {
+                    "detail": "Order summary is available after delivery."
+                })
+
+    def test_missing_order_returns_not_found(self):
+        # Return 404 for missing orders.
+        missing_id = self.order.id + 1
+        self.assertFalse(Order.objects.filter(pk=missing_id).exists())
+
+        response = self.client.get(f"/api/pricing/orders/{missing_id}/summary/")
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_unauthenticated_request_is_denied(self):
+        # Require customer login.
+        self.client.force_authenticate(user=None)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_non_customer_roles_are_denied(self):
+        # Reject non-customer accounts.
+        User = get_user_model()
+        for role in (User.Role.RESTAURANT, User.Role.COURIER, User.Role.OPERATOR):
+            with self.subTest(role=role):
+                user = User.objects.create_user(username=f"summary_{role}_access", role=role)
+                self.client.force_authenticate(user=user)
+
+                response = self.client.get(self.url)
+
+                self.assertEqual(response.status_code, 403)
+
+    def test_inactive_customer_is_denied(self):
+        # Reject inactive customers.
+        self.customer.is_active = False
+        self.customer.save()
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_small_order_summary_includes_surcharge(self):
+        # Include small-order surcharge.
+        self.order.lines.update(quantity=1)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["subtotal"], "12.00")
+        self.assertEqual(response.data["small_order_surcharge"], "2.00")
+        self.assertEqual(response.data["total"], "19.49")
+        self.assertEqual(response.data["items"][0]["line_total"], "12.00")
+
+    def test_multiple_items_use_order_prices(self):
+        # Preserve saved prices across items.
+        MenuItem.objects.filter(restaurant=self.order.restaurant).update(price="99.00")
+        item = MenuItem.objects.create(
+            restaurant=self.order.restaurant, name="Soup", price="9.00"
+        )
+        OrderLine.objects.create(
+            order=self.order, menu_item=item, quantity=3, unit_price="4.25"
+        )
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertCountEqual(response.data["items"], [
+            {"name": "Vegan Burger", "quantity": 2,
+             "unit_price": "12.00", "line_total": "24.00"},
+            {"name": "Soup", "quantity": 3,
+             "unit_price": "4.25", "line_total": "12.75"},
+        ])
+        self.assertEqual(response.data["subtotal"], "36.75")
+        self.assertEqual(response.data["total"], "42.24")
