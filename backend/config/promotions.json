@@ -1,0 +1,32 @@
+{
+  "WELCOME5": {
+    "type": "fixed",
+    "discount": "5.00",
+    "minimum_spend": "20.00",
+    "expires_at": "2027-12-31T23:59:59-05:00"
+  },
+  "FEAST10": {
+    "type": "fixed",
+    "discount": "10.00",
+    "minimum_spend": "40.00",
+    "expires_at": "2027-12-31T23:59:59-05:00"
+  },
+  "EXPIRED5": {
+    "type": "fixed",
+    "discount": "5.00",
+    "minimum_spend": "20.00",
+    "expires_at": "2026-01-01T00:00:00-05:00"
+  },
+  "SAVE10": {
+    "type": "percentage",
+    "discount": "10",
+    "minimum_spend": "15.00",
+    "expires_at": "2027-12-31T23:59:59-05:00"
+  },
+  "FEAST20": {
+    "type": "percentage",
+    "discount": "20",
+    "minimum_spend": "40.00",
+    "expires_at": "2027-12-31T23:59:59-05:00"
+  }
+}

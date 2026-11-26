@@ -2,6 +2,8 @@ from rest_framework import serializers
 from .commands import RESTAURANT_ORDER_COMMANDS
 from decimal import Decimal
 from .models import MenuItem, Restaurant, Order, OrderLine
+from pricing.models import OrderLedger
+from pricing.services import calculate_order_pricing
 
 class RestaurantSerializer(serializers.ModelSerializer):
     class Meta:
@@ -46,9 +48,8 @@ class OrderItemInputSerializer(serializers.Serializer):
     quantity = serializers.IntegerField(min_value=1)
 
 
-class PlaceOrderSerializer(serializers.Serializer):
-    delivery_address_token = serializers.CharField(max_length=3000)
-    delivery_unit = serializers.CharField(max_length=80, required=False, allow_blank=True)
+class CheckoutQuoteSerializer(serializers.Serializer):
+    promo_code = serializers.CharField(max_length=40, required=False, allow_blank=True, default="")
     restaurant_id = serializers.IntegerField(min_value=1)
     items = OrderItemInputSerializer(many=True, allow_empty=False)
 
@@ -61,6 +62,11 @@ class PlaceOrderSerializer(serializers.Serializer):
             )
 
         return items
+
+
+class PlaceOrderSerializer(CheckoutQuoteSerializer):
+    delivery_address_token = serializers.CharField(max_length=3000)
+    delivery_unit = serializers.CharField(max_length=80, required=False, allow_blank=True)
 
 
 class RestaurantOrderLineSerializer(serializers.ModelSerializer):
@@ -83,6 +89,25 @@ class RestaurantOrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = ["id", "restaurant_id", "restaurant_name", "customer_name", "status", "created_at", "picked_up_at", "delivered_at", "lines", "total"]
+
+
+class CustomerOrderSerializer(RestaurantOrderSerializer):
+    """Show the charged total and promo savings directly in customer history."""
+
+    def to_representation(self, order):
+
+
+        data = super().to_representation(order)
+        try:
+            ledger = order.ledger_entry
+        except OrderLedger.DoesNotExist:
+            pricing = calculate_order_pricing(order)
+            data.update(total=str(pricing["total"]), promo_code=pricing["promo_code"],
+                        discount=str(pricing["discount"]))
+        else:
+            data.update(total=str(ledger.total_charge), promo_code=ledger.promo_code,
+                        discount=str(ledger.discount))
+        return data
 
 
 class OrderStatusSerializer(serializers.Serializer):

@@ -182,6 +182,8 @@ class OrderSummaryTests(TestCase):
             "service_fee": "1.50",
             "small_order_surcharge": "0.00",
             "total": "29.49",
+            "promo_code": "",
+            "discount": "0.00",
         })
 
     def test_refunded_statuses_allow_summary(self):
