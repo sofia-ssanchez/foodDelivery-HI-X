@@ -32,11 +32,7 @@ class OrderSummaryView(APIView):
             customer=request.user
         )
 
-        if order.status not in [
-            Order.Status.DELIVERED,
-            Order.Status.PARTIALLY_REFUNDED,
-            Order.Status.REFUNDED,
-        ]:
+        if not self._is_summary_available(order):
             return Response(
                 {"detail": "Order summary is available after delivery."},
                 status=status.HTTP_409_CONFLICT
@@ -44,15 +40,7 @@ class OrderSummaryView(APIView):
 
         pricing = calculate_order_pricing(order)
 
-        items = [
-            {
-                "name": line.menu_item.name,
-                "quantity": line.quantity,
-                "unit_price": str(line.unit_price),
-                "line_total": str(line.unit_price * line.quantity)
-            }
-            for line in order.lines.all()
-        ]
+        items = self._build_items(order)
 
         return Response({
             "order_id": order.id,
@@ -66,6 +54,24 @@ class OrderSummaryView(APIView):
             "small_order_surcharge": str(pricing["small_order_surcharge"]),
             "total": str(pricing["total"])
         })
+
+    def _is_summary_available(self, order):
+        return order.status in [
+            Order.Status.DELIVERED,
+            Order.Status.PARTIALLY_REFUNDED,
+            Order.Status.REFUNDED,
+        ]
+
+    def _build_items(self, order):
+        return [
+            {
+                "name": line.menu_item.name,
+                "quantity": line.quantity,
+                "unit_price": str(line.unit_price),
+                "line_total": str(line.unit_price * line.quantity)
+            }
+            for line in order.lines.all()
+        ]
 
 
 class OperatorLedgerView(APIView):
