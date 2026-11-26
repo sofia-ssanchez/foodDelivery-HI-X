@@ -5,6 +5,11 @@ import type { Map as LeafletMap } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { apiFetch } from "@/lib/api";
 
+// Leaflet needs window; keep its module loading browser-only.
+const leafletModule = typeof window === "undefined"
+  ? Promise.resolve(null)
+  : import("leaflet").catch(() => null);
+
 const MONTREAL: [number, number] = [45.5017, -73.5673];
 // Leave room around the island when viewing it at a wider zoom.
 const MONTREAL_BOUNDS: [[number, number], [number, number]] = [[45.0, -74.6], [46.05, -72.95]];
@@ -83,7 +88,8 @@ export default function MontrealMap() {
 
     async function initialize() {
       try {
-        const L = await import("leaflet");
+        const L = await leafletModule;
+        if (!L) throw new Error("The map could not be loaded.");
         if (disposed || !container.current) return;
         const bounds = L.latLngBounds(MONTREAL_BOUNDS);
         const currentMap = L.map(container.current, {

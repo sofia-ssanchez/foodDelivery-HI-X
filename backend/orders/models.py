@@ -73,6 +73,8 @@ class MenuItem(models.Model) :
         return self.name
 
 class Order(models.Model) :
+    payment_details = models.JSONField(default=dict, blank=True, editable=False)
+
 
     @property
     def state(self):

@@ -31,6 +31,12 @@ type OrderResponse = {
   status?: string;
   message?: string;
   detail?: string;
+  pricing?: CheckoutPricing;
+};
+
+type CheckoutPricing = {
+  subtotal: string; delivery_fee: string; service_fee: string;
+  small_order_surcharge: string; discount: string; total: string; promo_code: string;
 };
 
 const RESTAURANTS_ENDPOINT = `${API_BASE}/api/restaurants/`;
@@ -50,6 +56,42 @@ export default function CustomerDashboard() {
 
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [promoInput, setPromoInput] = useState("");
+  const [requestedCode, setRequestedCode] = useState("");
+  const [promoError, setPromoError] = useState("");
+  const [quoteAttempt, setQuoteAttempt] = useState(0);
+  const [quoteResult, setQuoteResult] = useState<{ key: string; pricing?: CheckoutPricing; error?: string } | null>(null);
+  const quoteBody = JSON.stringify({
+    restaurant_id: selectedRestaurant?.id,
+    items: cart.map((item) => ({ menu_item_id: item.id, quantity: item.quantity })),
+    promo_code: requestedCode,
+  });
+  const quoteKey = `${quoteBody}:${quoteAttempt}`;
+  const pricing = quoteResult?.key === quoteKey ? quoteResult.pricing : undefined;
+  const quoteError = quoteResult?.key === quoteKey ? quoteResult.error : undefined;
+  const hasCart = cart.length > 0;
+  const quotePending = hasCart && quoteResult?.key !== quoteKey;
+
+  useEffect(() => {
+    if (!hasCart) return;
+    const controller = new AbortController();
+    let active = true;
+    async function quote() {
+      try {
+        const response = await apiFetch("/api/pricing/checkout/quote/", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: quoteBody, signal: controller.signal,
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || "Could not calculate checkout total.");
+        if (active) setQuoteResult({ key: quoteKey, pricing: data });
+      } catch (error) {
+        if (active) setQuoteResult({ key: quoteKey, error: error instanceof Error ? error.message : "Could not calculate checkout total." });
+      }
+    }
+    void quote();
+    return () => { active = false; controller.abort(); };
+  }, [quoteBody, quoteKey, hasCart]);
 
   const [loadingRestaurants, setLoadingRestaurants] = useState(true);
   const [loadingMenu, setLoadingMenu] = useState(false);
@@ -98,6 +140,9 @@ export default function CustomerDashboard() {
     if (restaurant.status !== "open") return;
 
     setSelectedRestaurant(restaurant);
+    setRequestedCode("");
+    setPromoError("");
+    setPromoInput("");
 
     setMenuItems([]);
     setCart([]);
@@ -258,11 +303,16 @@ export default function CustomerDashboard() {
       return;
     }
 
+    if (!pricing) {
+      setOrderError("Wait for a valid checkout total before placing the order.");
+      return;
+    }
     setPlacingOrder(true);
 
     try {
       const orderBody = {
         restaurant_id: selectedRestaurant.id,
+        promo_code: pricing.promo_code,
         delivery_address_token: deliveryAddress.token,
         delivery_unit: deliveryAddress.unit.trim(),
         items: cart.map((item) => ({
@@ -293,12 +343,15 @@ export default function CustomerDashboard() {
       setOrderMessage(
         data.message ||
           (data.id
-            ? `Order #${data.id} was placed successfully.`
+            ? `Order #${data.id} was placed successfully. Total: $${data.pricing?.total ?? pricing.total}${data.pricing?.promo_code ? ` · ${data.pricing.promo_code} applied` : ""}.`
             : "Order placed successfully.")
       );
 
       setOrderStatus(data.status || "placed");
       setCart([]);
+      setRequestedCode("");
+      setPromoError("");
+      setPromoInput("");
     } catch (error) {
       setOrderError(
         error instanceof Error
@@ -610,10 +663,42 @@ export default function CustomerDashboard() {
                   {cart.length > 0 && (
                     <>
                       <CheckoutAddress value={deliveryAddress} onChange={setDeliveryAddress} disabled={placingOrder} />
-                      <div className="mt-6 border-t pt-4">
-                        <p className="font-semibold">
-                          Total: ${totalPrice.toFixed(2)}
-                        </p>
+                      <div className="mt-4">
+                        <label htmlFor="promo-code" className="font-semibold">Promo code</label>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          <input id="promo-code" className="form-input min-w-0 flex-1" maxLength={40}
+                            value={promoInput} disabled={placingOrder} placeholder="Enter promo code"
+                            onChange={(event) => { setPromoInput(event.target.value); setPromoError(""); }} />
+                          <button type="button" className="btn btn-secondary" disabled={placingOrder || quotePending || !promoInput.trim()}
+                            onClick={() => {
+                              const code = promoInput.trim().toUpperCase();
+                              if (pricing?.promo_code && code !== pricing.promo_code) {
+                                setPromoError("Only 1 code allowed. Remove the current code before applying another one.");
+                                return;
+                              }
+                              setPromoError("");
+                              setRequestedCode(code);
+                              setQuoteAttempt((value) => value + 1);
+                              setOrderError("");
+                            }}>Apply</button>
+                          {requestedCode && <button type="button" className="btn" disabled={placingOrder}
+                            onClick={() => { setRequestedCode(""); setPromoInput(""); setPromoError(""); setOrderError(""); }}>{pricing?.promo_code ? "Remove code" : "Clear code"}</button>}
+                        </div>
+                        {promoError && <p role="alert" className="message message-error mt-2">{promoError}</p>}
+                        {pricing?.promo_code && <p role="status" className="message message-success mt-2">{pricing.promo_code} applied. You save ${pricing.discount}.</p>}
+                        {quoteError && <div role="alert" className="message message-error mt-2">{quoteError}
+                          <button type="button" className="btn" onClick={() => setQuoteAttempt((value) => value + 1)}>Retry</button>
+                        </div>}
+                      </div>
+                      <div className="mt-6 border-t pt-4 space-y-2" aria-live="polite">
+                        <p>Items subtotal: ${pricing?.subtotal ?? totalPrice.toFixed(2)}</p>
+                        {pricing ? <>
+                          <p>Delivery fee: ${pricing.delivery_fee}</p>
+                          <p>Service fee: ${pricing.service_fee}</p>
+                          <p>Small-order surcharge: ${pricing.small_order_surcharge}</p>
+                          {pricing.promo_code && <p>Promo discount: −${pricing.discount}</p>}
+                          <p className="font-semibold">Total: ${pricing.total}</p>
+                        </> : !quoteError && <p>Calculating total…</p>}
                       </div>
 
                       <button
@@ -621,7 +706,7 @@ export default function CustomerDashboard() {
                         className="btn btn-primary btn-full mt-4"
                         onClick={placeOrder}
                         disabled={
-                          placingOrder || !deliveryAddress.token ||
+                          placingOrder || !pricing || !deliveryAddress.token ||
                           selectedRestaurant?.status !== "open"
                         }
                       >

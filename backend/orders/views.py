@@ -7,7 +7,6 @@ from rest_framework import generics, serializers, status
 from rest_framework.views import APIView
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
-
 from delivery.models import Courier
 from guards.permissions import RequireAuth, RequireCustomer, RequireOperator, RequireRestaurantUser
 from .address_lookup import SALT, search_addresses
@@ -26,6 +25,7 @@ from .serializers import (
     RestaurantOrderSerializer,
     OrderStatusSerializer,
 )
+from .demo import reset_demo
 
 
 class PlaceOrderView(generics.CreateAPIView):
@@ -45,6 +45,7 @@ class PlaceOrderView(generics.CreateAPIView):
             items=serializer.validated_data["items"],
             delivery_address_token=serializer.validated_data["delivery_address_token"],
             delivery_unit=serializer.validated_data.get("delivery_unit", ""),
+            promo_code=serializer.validated_data.get("promo_code", ""),
         )
 
         order = command.execute()
@@ -53,6 +54,7 @@ class PlaceOrderView(generics.CreateAPIView):
             {
                 "id": order.id,
                 "restaurant_id": order.restaurant_id,
+                "pricing": order.payment_details,
                 "status": order.status,
             },
             status=status.HTTP_201_CREATED,
@@ -217,7 +219,6 @@ class DemoResetView(APIView):
     permission_classes = [RequireOperator]
 
     def post(self, request):
-        from .demo import reset_demo
         response = Response(reset_demo())
         response['Cache-Control'] = 'no-store'
         return response
