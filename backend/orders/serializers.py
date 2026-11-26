@@ -2,6 +2,8 @@ from rest_framework import serializers
 from .commands import RESTAURANT_ORDER_COMMANDS
 from decimal import Decimal
 from .models import MenuItem, Restaurant, Order, OrderLine
+from pricing.models import OrderLedger
+from pricing.services import calculate_order_pricing
 
 class RestaurantSerializer(serializers.ModelSerializer):
     class Meta:
@@ -93,8 +95,7 @@ class CustomerOrderSerializer(RestaurantOrderSerializer):
     """Show the charged total and promo savings directly in customer history."""
 
     def to_representation(self, order):
-        from pricing.models import OrderLedger
-        from pricing.services import calculate_order_pricing
+
 
         data = super().to_representation(order)
         try:

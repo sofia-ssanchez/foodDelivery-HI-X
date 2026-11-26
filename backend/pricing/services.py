@@ -11,6 +11,7 @@ from rest_framework.exceptions import ValidationError, PermissionDenied
 
 from orders.models import Order
 from orders.event_services import record_order_status_event
+from promotions.services import validate_promo_code
 
 from .models import OrderLedger, RefundRequest, RefundLedgerEntry
 
@@ -30,9 +31,9 @@ def load_pricing_config():
 
 
 def calculate_order_pricing(order):
-    snapshot = getattr(order, "pricing_snapshot", None)
-    if snapshot:
-        return {key: value if key == "promo_code" else money(value) for key, value in snapshot.items()}
+    payment_details = getattr(order, "payment_details", None)
+    if payment_details:
+        return {key: value if key == "promo_code" else money(value) for key, value in payment_details.items()}
     return calculate_line_pricing([
         {"quantity": line.quantity, "unit_price": line.unit_price}
         for line in order.lines.all()
@@ -40,7 +41,7 @@ def calculate_order_pricing(order):
 
 
 def calculate_line_pricing(lines, promo_code=""):
-    from promotions.services import validate_promo_code
+    
     config = load_pricing_config()
 
     subtotal = Decimal("0.00")

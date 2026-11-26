@@ -5,7 +5,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework.exceptions import APIException, PermissionDenied, ValidationError
 from pricing.services import record_order_ledger, calculate_line_pricing
-from .checkout import get_checkout_restaurant, prepare_checkout_lines
+from .checkout import get_restaurant, prepare_checkout_lines
 from delivery import events
 from delivery.models import DeliveryAssignment
 from delivery.services import invalidate_offers_for_cancelled_order
@@ -35,12 +35,12 @@ class PlaceOrderCommand(OrderCommand):
     def execute(self):
         self._validate_customer()
         location = read_checkout_address(self.delivery_address_token, self.customer.pk)
-        restaurant = get_checkout_restaurant(self.restaurant_id)
+        restaurant = get_restaurant(self.restaurant_id)
         order_lines = prepare_checkout_lines(restaurant, self.items)
         pricing = calculate_line_pricing(order_lines, self.promo_code)
         order = self._create_order(restaurant, location)
-        order.pricing_snapshot = {key: str(value) for key, value in pricing.items()}
-        order.save(update_fields=["pricing_snapshot"])
+        order.payment_details = {key: str(value) for key, value in pricing.items()}
+        order.save(update_fields=["payment_details"])
         self._update_customer_address(order)
         self._record_placement(order)
         self._create_order_lines(order, order_lines)

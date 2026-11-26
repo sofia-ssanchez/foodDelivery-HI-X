@@ -3,7 +3,7 @@ from rest_framework.exceptions import ValidationError
 from .models import MenuItem, Restaurant
 
 
-def get_checkout_restaurant(restaurant_id):
+def get_restaurant(restaurant_id):
     try:
         restaurant = Restaurant.objects.get(id=restaurant_id)
     except Restaurant.DoesNotExist:

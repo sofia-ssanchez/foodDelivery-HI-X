@@ -3,10 +3,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.exceptions import PermissionDenied
-
 from guards.permissions import RequireAuth, RequireCustomer
 from orders.models import Order
-
 from .models import OrderLedger, RefundRequest
 from .serializers import (
     RefundRequestCreateSerializer,
@@ -20,6 +18,9 @@ from .services import (
     evaluate_refund_eligibility,
     money,
 )
+from orders.serializers import CheckoutQuoteSerializer
+from orders.checkout import get_restaurant, prepare_checkout_lines
+from .services import calculate_line_pricing
 
 
 class OrderSummaryView(APIView):
@@ -326,13 +327,10 @@ class CheckoutQuoteView(APIView):
     permission_classes = [RequireCustomer]
 
     def post(self, request):
-        from orders.serializers import CheckoutQuoteSerializer
-        from orders.checkout import get_checkout_restaurant, prepare_checkout_lines
-        from .services import calculate_line_pricing
         serializer = CheckoutQuoteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-        restaurant = get_checkout_restaurant(data["restaurant_id"])
+        restaurant = get_restaurant(data["restaurant_id"])
         lines = prepare_checkout_lines(restaurant, data["items"])
         pricing = calculate_line_pricing(lines, data["promo_code"])
         return Response({key: str(value) for key, value in pricing.items()})

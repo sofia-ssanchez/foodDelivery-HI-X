@@ -1,17 +1,17 @@
 from datetime import datetime, timezone
 from decimal import Decimal
 from unittest.mock import patch
-
 from django.contrib.auth import get_user_model
 from django.core import signing
 from django.test import TestCase
 from rest_framework.test import APIClient
-
 from orders.address_lookup import SALT
 from orders.models import MenuItem, Order, Restaurant
 from pricing.models import OrderLedger
 from pricing.services import (calculate_order_pricing, record_order_ledger,
                               submit_refund_request, decide_refund_request)
+from rest_framework.exceptions import ValidationError
+from orders.models import OrderLine
 
 
 class PromoCheckoutTests(TestCase):
@@ -118,7 +118,6 @@ class PromoCheckoutTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data[0]["discount"], "5.00")
         self.assertEqual(response.data[0]["total_charge"], "20.49")
-        from rest_framework.exceptions import ValidationError
         with self.assertRaises(ValidationError):
             submit_refund_request(self.customer, order.pk, "missing_items", requested_amount="25.49")
         refund = submit_refund_request(self.customer, order.pk, "missing_items", requested_amount="20.49")
@@ -193,7 +192,6 @@ class PromoCheckoutTests(TestCase):
     def test_customer_order_cards_use_original_ledger_for_legacy_orders(self):
         order = Order.objects.create(customer=self.customer, restaurant=self.restaurant,
                                      status=Order.Status.DELIVERED)
-        from orders.models import OrderLine
         OrderLine.objects.create(order=order, menu_item=self.item, quantity=1, unit_price="20.00")
         record_order_ledger(order)
         with patch("pricing.services.load_pricing_config", side_effect=AssertionError("Use original charge")):
