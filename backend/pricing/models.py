@@ -3,8 +3,6 @@ from django.db import models
 from django.db.models import Q
 
 class OrderLedger(models.Model):
-    promo_code = models.CharField(max_length=40, blank=True)
-    discount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     order = models.OneToOneField(
         "orders.Order",

@@ -11,7 +11,6 @@ from guards.permissions import RequireAuth, RequireCustomer, RequireOperator, Re
 from .commands import CreateMenuItemCommand, UpdateMenuItemCommand
 from .models import MenuItem, Order, Restaurant
 from .serializers import (
-    CustomerOrderSerializer,
     MenuItemSerializer,
     MenuItemWriteSerializer,
     RestaurantOrderSerializer,
@@ -21,12 +20,12 @@ from .serializers import (
 
 class CustomerOrderListView(generics.ListAPIView):
     permission_classes = [RequireCustomer]
-    serializer_class = CustomerOrderSerializer
+    serializer_class = RestaurantOrderSerializer
     pagination_class = None
 
     def get_queryset(self):
         return Order.objects.filter(customer=self.request.user).select_related(
-            "customer", "restaurant", "ledger_entry"
+            "customer", "restaurant"
         ).prefetch_related("lines__menu_item").order_by("-created_at", "-id")
 
 

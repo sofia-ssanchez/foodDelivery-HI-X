@@ -5,9 +5,11 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.test import APIClient
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
+
 from orders.commands import MarkOrderReadyCommand
 from orders.models import MenuItem, Order, OrderLine, Restaurant
 from pricing.models import OrderLedger
+
 from . import events
 from .commands import (
     DeliveryConflict,
@@ -15,11 +17,6 @@ from .commands import (
     create_delivery_offer,
 )
 from .models import Courier, DeliveryAssignment
-from unittest.mock import patch
-from django.utils import timezone
-from .commands import AcceptOfferCommand, expire_delivery_offer
-from .commands import AcceptOfferCommand
-from .commands import AcceptOfferCommand, ConfirmPickupCommand
 
 
 class DeliveryLifecycleTests(TestCase):
@@ -128,6 +125,7 @@ class DeliveryLifecycleTests(TestCase):
     def test_decline_releases_offer_and_emits_dispatch_event(self):
         self.go_on_duty()
         assignment = self.offer()
+        from unittest.mock import patch
         with patch.object(events.delivery_offer_declined, "send_robust") as send:
             with self.captureOnCommitCallbacks(execute=True):
                 response = self.client.post(
@@ -204,6 +202,7 @@ class DeliveryLifecycleTests(TestCase):
         operator_client = APIClient()
         operator_client.force_authenticate(user=self.operator)
 
+        from unittest.mock import patch
         with patch(
             "orders.commands.record_order_ledger",
             side_effect=RuntimeError("simulated PRC failure"),
@@ -415,6 +414,7 @@ class DeliveryLifecycleTests(TestCase):
             first_pickup_time,
         )
 
+        from unittest.mock import patch
         with patch.object(events.courier_became_idle, "send_robust") as send:
             with self.captureOnCommitCallbacks(execute=True):
                 response = self.client.post(
@@ -438,6 +438,7 @@ class DeliveryLifecycleTests(TestCase):
         self.assertEqual(OrderLedger.objects.filter(order=self.order).count(), 1)
 
     def test_ledger_failure_rolls_back_delivery_state_changes(self):
+        from unittest.mock import patch
 
         self.go_on_duty()
         assignment = self.offer()
@@ -489,6 +490,7 @@ class DeliveryLifecycleTests(TestCase):
     def test_order_ready_event_is_emitted_after_ord_transition(self):
         self.order.status = Order.Status.PREPARING
         self.order.save(update_fields=["status"])
+        from unittest.mock import patch
         with patch.object(events.order_became_ready, "send_robust") as send:
             with self.captureOnCommitCallbacks(execute=True):
                 MarkOrderReadyCommand(
@@ -569,6 +571,8 @@ class ConcurrentDeliveryActionTests(TransactionTestCase):
         )
 
     def test_acceptance_racing_expiration_has_one_winner(self):
+        from django.utils import timezone
+        from .commands import AcceptOfferCommand, expire_delivery_offer
         barrier = Barrier(2)
         cutoff = timezone.now()
 
@@ -618,6 +622,7 @@ class ConcurrentDeliveryActionTests(TransactionTestCase):
         )
 
     def test_concurrent_pickup_has_one_winner(self):
+        from .commands import AcceptOfferCommand
         AcceptOfferCommand(actor=self.courier_user, assignment_id=self.assignment.id).execute()
 
         statuses = self.concurrent_posts(
@@ -632,6 +637,7 @@ class ConcurrentDeliveryActionTests(TransactionTestCase):
         self.assertIsNotNone(self.assignment.picked_up_at)
 
     def test_concurrent_delivery_has_one_winner_and_one_ledger(self):
+        from .commands import AcceptOfferCommand, ConfirmPickupCommand
         AcceptOfferCommand(actor=self.courier_user, assignment_id=self.assignment.id).execute()
         ConfirmPickupCommand(actor=self.courier_user, assignment_id=self.assignment.id).execute()
 

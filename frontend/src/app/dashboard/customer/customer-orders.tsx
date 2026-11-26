@@ -10,8 +10,6 @@ type Order = {
   status: string;
   created_at: string;
   total: string;
-  promo_code: string;
-  discount: string;
   lines: {
     id: number;
     name: string;
@@ -25,8 +23,6 @@ type SummaryDetails = {
   delivery_fee: string;
   service_fee: string;
   small_order_surcharge: string;
-  promo_code: string;
-  discount: string;
   total: string;
 };
 
@@ -176,12 +172,6 @@ function OrderSummary({ orderId }: { orderId: number }) {
             <span>Small-order surcharge</span>
             <span>{money(summary.small_order_surcharge)}</span>
           </div>
-          {summary.promo_code && (
-            <div className="flex justify-between gap-4">
-              <span>Promo ({summary.promo_code})</span>
-              <span>−{money(summary.discount)}</span>
-            </div>
-          )}
 
           <div className="flex justify-between font-bold border-t pt-2">
             <span>Final total</span>
@@ -615,18 +605,12 @@ export default function CustomerOrders({
               ))}
             </ul>
 
-            {order.promo_code && (
-              <div className="flex justify-between gap-4 mb-2">
-                <span>Promo ({order.promo_code})</span>
-                <span>−{money(order.discount)}</span>
-              </div>
-            )}
             <div className="flex justify-between font-bold">
-              <span>Total charged</span>
+              <span>Items subtotal</span>
               <span>{money(order.total)}</span>
             </div>
 
-            {["delivered", "partially_refunded", "refunded"].includes(order.status) && (
+            {order.status === "delivered" && (
               <OrderSummary orderId={order.id} />
             )}
 

@@ -2,12 +2,6 @@
 
 from .dispatcher import Dispatcher
 from .publishers import OrderReadyPublisher, CourierAvailabilityPublisher
-from django.dispatch import receiver
-from delivery.events import courier_became_idle, delivery_offer_declined, delivery_assignment_released
-from delivery.models import Courier
-from delivery.events import delivery_offer_expired
-from orders.models import Order
-from .publishers import StalledOrderPublisher
 
 
 dispatcher = Dispatcher()
@@ -18,6 +12,9 @@ courier_available_publisher.subscribe(dispatcher)
 
 
 
+from django.dispatch import receiver
+from delivery.events import courier_became_idle, delivery_offer_declined, delivery_assignment_released
+from delivery.models import Courier
 
 
 @receiver(delivery_assignment_released, dispatch_uid="dispatch.released_assignment")
@@ -33,6 +30,9 @@ def offer_waiting_order(sender, courier_id, **kwargs):
         dispatcher.on_courier_available(courier)
 
 
+from delivery.events import delivery_offer_expired
+from orders.models import Order
+from .publishers import StalledOrderPublisher
 
 stalled_order_publisher = StalledOrderPublisher()
 stalled_order_publisher.subscribe(dispatcher)

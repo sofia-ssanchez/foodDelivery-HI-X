@@ -1,5 +1,4 @@
 from django.apps import AppConfig
-from django.utils.module_loading import autodiscover_modules
 
 
 class DeliveryConfig(AppConfig):
@@ -7,5 +6,5 @@ class DeliveryConfig(AppConfig):
     name = "delivery"
 
     def ready(self):
-        # Discover signal modules only after Django has loaded all models.
-        autodiscover_modules("signals")
+        from . import user_signals  # noqa: F401
+        from dispatch import events  # noqa: F401
