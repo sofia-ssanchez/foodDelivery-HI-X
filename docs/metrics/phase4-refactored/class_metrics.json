@@ -1,0 +1,1949 @@
+{
+  "measurement": "supplemental Python AST; not SonarQube metrics",
+  "ref": "phase4-refactored",
+  "commit": "f4adab8d184d6c59a7e155fd085a0dced05e0d05",
+  "loc_method": "nonblank, non-comment physical lines in AST class span",
+  "cyclomatic_method": "sum of direct method McCabe scores; each method starts at 1; decision points: if/for/async-for/while/conditional-expression, except handler, each boolean operator after the first, each comprehension generator/filter, and match alternatives",
+  "cognitive_complexity": "not measured by this script",
+  "scope": "all tracked Python source files under backend/ and frontend/src/, excluding migrations and __pycache__",
+  "classes": [
+    {
+      "class": "AccountsConfig",
+      "path": "backend/accounts/apps.py",
+      "line_start": 4,
+      "line_end": 5,
+      "loc_nonblank_noncomment": 2,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "User",
+      "path": "backend/accounts/models.py",
+      "line_start": 6,
+      "line_end": 41,
+      "loc_nonblank_noncomment": 30,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "User.Role",
+      "path": "backend/accounts/models.py",
+      "line_start": 7,
+      "line_end": 11,
+      "loc_nonblank_noncomment": 5,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "SignupSerializer",
+      "path": "backend/accounts/serializers.py",
+      "line_start": 6,
+      "line_end": 37,
+      "loc_nonblank_noncomment": 26,
+      "cyclomatic_method_sum": 3,
+      "method_cyclomatic": {
+        "validate_email": 2,
+        "create": 1
+      }
+    },
+    {
+      "class": "SignupSerializer.Meta",
+      "path": "backend/accounts/serializers.py",
+      "line_start": 12,
+      "line_end": 19,
+      "loc_nonblank_noncomment": 8,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "CustomTokenObtainPairSerializer",
+      "path": "backend/accounts/serializers.py",
+      "line_start": 39,
+      "line_end": 46,
+      "loc_nonblank_noncomment": 7,
+      "cyclomatic_method_sum": 1,
+      "method_cyclomatic": {
+        "get_token": 1
+      }
+    },
+    {
+      "class": "LogoutView",
+      "path": "backend/accounts/views.py",
+      "line_start": 21,
+      "line_end": 34,
+      "loc_nonblank_noncomment": 10,
+      "cyclomatic_method_sum": 2,
+      "method_cyclomatic": {
+        "post": 2
+      }
+    },
+    {
+      "class": "SignupView",
+      "path": "backend/accounts/views.py",
+      "line_start": 37,
+      "line_end": 39,
+      "loc_nonblank_noncomment": 3,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "TokenRefreshView",
+      "path": "backend/accounts/views.py",
+      "line_start": 42,
+      "line_end": 66,
+      "loc_nonblank_noncomment": 23,
+      "cyclomatic_method_sum": 5,
+      "method_cyclomatic": {
+        "post": 5
+      }
+    },
+    {
+      "class": "LoginView",
+      "path": "backend/accounts/views.py",
+      "line_start": 69,
+      "line_end": 108,
+      "loc_nonblank_noncomment": 33,
+      "cyclomatic_method_sum": 1,
+      "method_cyclomatic": {
+        "post": 1
+      }
+    },
+    {
+      "class": "CurrentAccountView",
+      "path": "backend/accounts/views.py",
+      "line_start": 111,
+      "line_end": 117,
+      "loc_nonblank_noncomment": 6,
+      "cyclomatic_method_sum": 1,
+      "method_cyclomatic": {
+        "get": 1
+      }
+    },
+    {
+      "class": "DeliveryConfig",
+      "path": "backend/delivery/apps.py",
+      "line_start": 4,
+      "line_end": 10,
+      "loc_nonblank_noncomment": 6,
+      "cyclomatic_method_sum": 1,
+      "method_cyclomatic": {
+        "ready": 1
+      }
+    },
+    {
+      "class": "DeliveryConflict",
+      "path": "backend/delivery/commands.py",
+      "line_start": 20,
+      "line_end": 22,
+      "loc_nonblank_noncomment": 3,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "CourierCommand",
+      "path": "backend/delivery/commands.py",
+      "line_start": 124,
+      "line_end": 143,
+      "loc_nonblank_noncomment": 18,
+      "cyclomatic_method_sum": 6,
+      "method_cyclomatic": {
+        "__init__": 1,
+        "get_courier": 4,
+        "execute": 1
+      }
+    },
+    {
+      "class": "ChangeDutyCommand",
+      "path": "backend/delivery/commands.py",
+      "line_start": 146,
+      "line_end": 200,
+      "loc_nonblank_noncomment": 50,
+      "cyclomatic_method_sum": 13,
+      "method_cyclomatic": {
+        "__init__": 1,
+        "execute": 12
+      }
+    },
+    {
+      "class": "AssignmentCommand",
+      "path": "backend/delivery/commands.py",
+      "line_start": 203,
+      "line_end": 223,
+      "loc_nonblank_noncomment": 19,
+      "cyclomatic_method_sum": 5,
+      "method_cyclomatic": {
+        "__init__": 1,
+        "get_assignment": 2,
+        "get_order": 2
+      }
+    },
+    {
+      "class": "AcceptOfferCommand",
+      "path": "backend/delivery/commands.py",
+      "line_start": 226,
+      "line_end": 252,
+      "loc_nonblank_noncomment": 26,
+      "cyclomatic_method_sum": 4,
+      "method_cyclomatic": {
+        "execute": 4
+      }
+    },
+    {
+      "class": "DeclineOfferCommand",
+      "path": "backend/delivery/commands.py",
+      "line_start": 255,
+      "line_end": 279,
+      "loc_nonblank_noncomment": 25,
+      "cyclomatic_method_sum": 2,
+      "method_cyclomatic": {
+        "execute": 2
+      }
+    },
+    {
+      "class": "ConfirmPickupCommand",
+      "path": "backend/delivery/commands.py",
+      "line_start": 282,
+      "line_end": 307,
+      "loc_nonblank_noncomment": 26,
+      "cyclomatic_method_sum": 4,
+      "method_cyclomatic": {
+        "execute": 4
+      }
+    },
+    {
+      "class": "ConfirmDeliveryCommand",
+      "path": "backend/delivery/commands.py",
+      "line_start": 310,
+      "line_end": 340,
+      "loc_nonblank_noncomment": 31,
+      "cyclomatic_method_sum": 4,
+      "method_cyclomatic": {
+        "execute": 4
+      }
+    },
+    {
+      "class": "ReassignDeliveryCommand",
+      "path": "backend/delivery/commands.py",
+      "line_start": 343,
+      "line_end": 385,
+      "loc_nonblank_noncomment": 37,
+      "cyclomatic_method_sum": 7,
+      "method_cyclomatic": {
+        "__init__": 1,
+        "execute": 6
+      }
+    },
+    {
+      "class": "Courier",
+      "path": "backend/delivery/models.py",
+      "line_start": 8,
+      "line_end": 52,
+      "loc_nonblank_noncomment": 41,
+      "cyclomatic_method_sum": 3,
+      "method_cyclomatic": {
+        "transition": 2,
+        "__str__": 1
+      }
+    },
+    {
+      "class": "Courier.Status",
+      "path": "backend/delivery/models.py",
+      "line_start": 11,
+      "line_end": 15,
+      "loc_nonblank_noncomment": 5,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "DeliveryAssignment",
+      "path": "backend/delivery/models.py",
+      "line_start": 55,
+      "line_end": 106,
+      "loc_nonblank_noncomment": 48,
+      "cyclomatic_method_sum": 1,
+      "method_cyclomatic": {
+        "__str__": 1
+      }
+    },
+    {
+      "class": "DeliveryAssignment.Status",
+      "path": "backend/delivery/models.py",
+      "line_start": 58,
+      "line_end": 65,
+      "loc_nonblank_noncomment": 8,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "DeliveryAssignment.Meta",
+      "path": "backend/delivery/models.py",
+      "line_start": 90,
+      "line_end": 103,
+      "loc_nonblank_noncomment": 14,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "DutySerializer",
+      "path": "backend/delivery/serializers.py",
+      "line_start": 7,
+      "line_end": 8,
+      "loc_nonblank_noncomment": 2,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "ReassignDeliverySerializer",
+      "path": "backend/delivery/serializers.py",
+      "line_start": 11,
+      "line_end": 12,
+      "loc_nonblank_noncomment": 2,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "CourierSerializer",
+      "path": "backend/delivery/serializers.py",
+      "line_start": 15,
+      "line_end": 19,
+      "loc_nonblank_noncomment": 5,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "CourierSerializer.Meta",
+      "path": "backend/delivery/serializers.py",
+      "line_start": 16,
+      "line_end": 19,
+      "loc_nonblank_noncomment": 4,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "DeliveryAssignmentSerializer",
+      "path": "backend/delivery/serializers.py",
+      "line_start": 22,
+      "line_end": 45,
+      "loc_nonblank_noncomment": 23,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "DeliveryAssignmentSerializer.Meta",
+      "path": "backend/delivery/serializers.py",
+      "line_start": 37,
+      "line_end": 45,
+      "loc_nonblank_noncomment": 9,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "DeliveryLifecycleTests",
+      "path": "backend/delivery/tests.py",
+      "line_start": 22,
+      "line_end": 504,
+      "loc_nonblank_noncomment": 430,
+      "cyclomatic_method_sum": 30,
+      "method_cyclomatic": {
+        "setUp": 1,
+        "make_order": 1,
+        "go_on_duty": 1,
+        "offer": 3,
+        "test_new_courier_accounts_get_a_profile_offline": 1,
+        "test_duty_on_and_off_and_idempotent_updates": 1,
+        "test_offer_can_only_be_created_for_ready_order_and_idle_courier": 1,
+        "test_acceptance_assigns_exactly_one_order_and_hides_other_couriers_offers": 1,
+        "test_decline_releases_offer_and_emits_dispatch_event": 1,
+        "test_cancelled_ready_order_invalidates_only_pending_offer": 1,
+        "test_order_cancellation_is_rejected_after_acceptance_and_rolls_back": 1,
+        "test_operator_cancellation_ledger_failure_rolls_back_order_and_offer": 1,
+        "test_restaurant_has_no_cancellation_command": 1,
+        "test_customer_can_cancel_own_placed_order": 1,
+        "test_customer_cannot_cancel_another_customers_order": 1,
+        "test_customer_cannot_cancel_order_after_placement": 1,
+        "test_only_operator_can_cancel_after_placement": 1,
+        "test_duty_off_declines_pending_offer_and_cannot_go_offline_while_carrying": 1,
+        "test_going_offline_keeps_accepted_assignment_for_operator_reassignment": 1,
+        "test_operator_reassignment_replaces_only_an_offline_couriers_accepted_order": 1,
+        "test_operator_reassignment_is_exposed_as_an_operator_only_endpoint": 1,
+        "test_pickup_then_delivery_use_order_transitions_and_record_ledger_once": 1,
+        "test_ledger_failure_rolls_back_delivery_state_changes": 1,
+        "test_pickup_and_delivery_reject_wrong_order_state": 1,
+        "test_activity_shows_only_this_couriers_offer_and_active_assignment": 2,
+        "test_non_courier_cannot_use_courier_endpoints": 1,
+        "test_order_ready_event_is_emitted_after_ord_transition": 1
+      }
+    },
+    {
+      "class": "ConcurrentDeliveryActionTests",
+      "path": "backend/delivery/tests.py",
+      "line_start": 507,
+      "line_end": 654,
+      "loc_nonblank_noncomment": 132,
+      "cyclomatic_method_sum": 9,
+      "method_cyclomatic": {
+        "setUp": 1,
+        "concurrent_posts": 1,
+        "assert_one_success_one_conflict": 2,
+        "test_acceptance_racing_expiration_has_one_winner": 2,
+        "test_concurrent_acceptance_has_one_winner": 1,
+        "test_concurrent_pickup_has_one_winner": 1,
+        "test_concurrent_delivery_has_one_winner_and_one_ledger": 1
+      }
+    },
+    {
+      "class": "CourierActivityView",
+      "path": "backend/delivery/views.py",
+      "line_start": 26,
+      "line_end": 51,
+      "loc_nonblank_noncomment": 25,
+      "cyclomatic_method_sum": 2,
+      "method_cyclomatic": {
+        "get": 2
+      }
+    },
+    {
+      "class": "CourierDutyView",
+      "path": "backend/delivery/views.py",
+      "line_start": 54,
+      "line_end": 66,
+      "loc_nonblank_noncomment": 12,
+      "cyclomatic_method_sum": 2,
+      "method_cyclomatic": {
+        "patch": 2
+      }
+    },
+    {
+      "class": "CourierAssignmentActionView",
+      "path": "backend/delivery/views.py",
+      "line_start": 69,
+      "line_end": 81,
+      "loc_nonblank_noncomment": 12,
+      "cyclomatic_method_sum": 1,
+      "method_cyclomatic": {
+        "post": 1
+      }
+    },
+    {
+      "class": "AcceptOfferView",
+      "path": "backend/delivery/views.py",
+      "line_start": 84,
+      "line_end": 85,
+      "loc_nonblank_noncomment": 2,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "DeclineOfferView",
+      "path": "backend/delivery/views.py",
+      "line_start": 88,
+      "line_end": 89,
+      "loc_nonblank_noncomment": 2,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "ConfirmPickupView",
+      "path": "backend/delivery/views.py",
+      "line_start": 92,
+      "line_end": 93,
+      "loc_nonblank_noncomment": 2,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "ConfirmDeliveryView",
+      "path": "backend/delivery/views.py",
+      "line_start": 96,
+      "line_end": 97,
+      "loc_nonblank_noncomment": 2,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "OperatorReassignDeliveryView",
+      "path": "backend/delivery/views.py",
+      "line_start": 100,
+      "line_end": 114,
+      "loc_nonblank_noncomment": 14,
+      "cyclomatic_method_sum": 1,
+      "method_cyclomatic": {
+        "post": 1
+      }
+    },
+    {
+      "class": "Dispatcher",
+      "path": "backend/dispatch/dispatcher.py",
+      "line_start": 12,
+      "line_end": 100,
+      "loc_nonblank_noncomment": 73,
+      "cyclomatic_method_sum": 37,
+      "method_cyclomatic": {
+        "__init__": 3,
+        "verify_availability": 3,
+        "assign_order_to_courier": 3,
+        "on_order_stalled": 2,
+        "on_order_ready": 3,
+        "on_courier_available": 3,
+        "offer_to_nearest": 13,
+        "on_offer_declined": 7
+      }
+    },
+    {
+      "class": "DispatchStrategy",
+      "path": "backend/dispatch/interfaces.py",
+      "line_start": 9,
+      "line_end": 13,
+      "loc_nonblank_noncomment": 5,
+      "cyclomatic_method_sum": 1,
+      "method_cyclomatic": {
+        "select_courier": 1
+      }
+    },
+    {
+      "class": "OrderReadyObserver",
+      "path": "backend/dispatch/interfaces.py",
+      "line_start": 16,
+      "line_end": 20,
+      "loc_nonblank_noncomment": 5,
+      "cyclomatic_method_sum": 1,
+      "method_cyclomatic": {
+        "on_order_ready": 1
+      }
+    },
+    {
+      "class": "CourierAvailabilityObserver",
+      "path": "backend/dispatch/interfaces.py",
+      "line_start": 23,
+      "line_end": 27,
+      "loc_nonblank_noncomment": 5,
+      "cyclomatic_method_sum": 1,
+      "method_cyclomatic": {
+        "on_courier_available": 1
+      }
+    },
+    {
+      "class": "StalledOrderObserver",
+      "path": "backend/dispatch/interfaces.py",
+      "line_start": 30,
+      "line_end": 34,
+      "loc_nonblank_noncomment": 5,
+      "cyclomatic_method_sum": 1,
+      "method_cyclomatic": {
+        "on_order_stalled": 1
+      }
+    },
+    {
+      "class": "Command",
+      "path": "backend/dispatch/management/commands/check_stalled_orders.py",
+      "line_start": 9,
+      "line_end": 28,
+      "loc_nonblank_noncomment": 18,
+      "cyclomatic_method_sum": 6,
+      "method_cyclomatic": {
+        "add_arguments": 1,
+        "handle": 5
+      }
+    },
+    {
+      "class": "OrderReadyPublisher",
+      "path": "backend/dispatch/publishers.py",
+      "line_start": 8,
+      "line_end": 22,
+      "loc_nonblank_noncomment": 12,
+      "cyclomatic_method_sum": 7,
+      "method_cyclomatic": {
+        "__init__": 1,
+        "subscribe": 2,
+        "unsubscribe": 2,
+        "notify": 2
+      }
+    },
+    {
+      "class": "CourierAvailabilityPublisher",
+      "path": "backend/dispatch/publishers.py",
+      "line_start": 24,
+      "line_end": 38,
+      "loc_nonblank_noncomment": 12,
+      "cyclomatic_method_sum": 7,
+      "method_cyclomatic": {
+        "__init__": 1,
+        "subscribe": 2,
+        "unsubscribe": 2,
+        "notify": 2
+      }
+    },
+    {
+      "class": "StalledOrderPublisher",
+      "path": "backend/dispatch/publishers.py",
+      "line_start": 41,
+      "line_end": 55,
+      "loc_nonblank_noncomment": 12,
+      "cyclomatic_method_sum": 7,
+      "method_cyclomatic": {
+        "__init__": 1,
+        "subscribe": 2,
+        "unsubscribe": 2,
+        "notify": 2
+      }
+    },
+    {
+      "class": "CourierService",
+      "path": "backend/dispatch/services.py",
+      "line_start": 14,
+      "line_end": 33,
+      "loc_nonblank_noncomment": 19,
+      "cyclomatic_method_sum": 2,
+      "method_cyclomatic": {
+        "get_cooling_down_courier_ids": 1,
+        "get_idle_couriers": 1
+      }
+    },
+    {
+      "class": "OrderQueueService",
+      "path": "backend/dispatch/services.py",
+      "line_start": 36,
+      "line_end": 42,
+      "loc_nonblank_noncomment": 7,
+      "cyclomatic_method_sum": 1,
+      "method_cyclomatic": {
+        "get_waiting_orders": 1
+      }
+    },
+    {
+      "class": "NearestIdleCourierStrategy",
+      "path": "backend/dispatch/strategies.py",
+      "line_start": 30,
+      "line_end": 54,
+      "loc_nonblank_noncomment": 20,
+      "cyclomatic_method_sum": 8,
+      "method_cyclomatic": {
+        "select_courier": 8
+      }
+    },
+    {
+      "class": "onOrderPipelineTests",
+      "path": "backend/dispatch/tests.py",
+      "line_start": 26,
+      "line_end": 71,
+      "loc_nonblank_noncomment": 39,
+      "cyclomatic_method_sum": 1,
+      "method_cyclomatic": {
+        "test_ready_order_is_assigned_to_nearest_courier": 1
+      }
+    },
+    {
+      "class": "OrderQueueTests",
+      "path": "backend/dispatch/tests.py",
+      "line_start": 74,
+      "line_end": 98,
+      "loc_nonblank_noncomment": 22,
+      "cyclomatic_method_sum": 1,
+      "method_cyclomatic": {
+        "test_queue_orders_by_ready_time_then_id_and_excludes_assigned": 1
+      }
+    },
+    {
+      "class": "CourierAvailabilityPipelineTests",
+      "path": "backend/dispatch/tests.py",
+      "line_start": 101,
+      "line_end": 158,
+      "loc_nonblank_noncomment": 46,
+      "cyclomatic_method_sum": 6,
+      "method_cyclomatic": {
+        "setUp": 1,
+        "make_waiting_order": 1,
+        "test_notification_assigns_oldest_and_leaves_remaining_order_queued": 1,
+        "test_unavailable_courier_leaves_order_waiting": 1,
+        "test_empty_queue_creates_no_assignment": 1,
+        "tearDown": 1
+      }
+    },
+    {
+      "class": "CourierDutyEndpointTests",
+      "path": "backend/dispatch/tests.py",
+      "line_start": 161,
+      "line_end": 188,
+      "loc_nonblank_noncomment": 28,
+      "cyclomatic_method_sum": 2,
+      "method_cyclomatic": {
+        "test_duty_endpoint_creates_offer_visible_to_courier": 2
+      }
+    },
+    {
+      "class": "StalledOrderTests",
+      "path": "backend/dispatch/tests.py",
+      "line_start": 191,
+      "line_end": 344,
+      "loc_nonblank_noncomment": 138,
+      "cyclomatic_method_sum": 9,
+      "method_cyclomatic": {
+        "setUp": 1,
+        "test_expiration_notifies_after_commit_and_reoffers": 1,
+        "test_cooldown_keeps_order_waiting_then_sweep_retries": 1,
+        "test_accepted_offer_is_not_expired": 1,
+        "test_expired_offer_cannot_be_accepted_and_expiration_is_idempotent": 1,
+        "test_fresh_offer_is_not_expired": 1,
+        "test_sweep_respects_configured_timeout_and_exact_deadline": 1,
+        "test_sweep_continues_after_conflict_and_retries_waiting_queue": 1,
+        "test_sweep_assigns_waiting_orders_oldest_first_without_expirations": 1
+      }
+    },
+    {
+      "class": "StalledOrderCommandTests",
+      "path": "backend/dispatch/tests.py",
+      "line_start": 347,
+      "line_end": 390,
+      "loc_nonblank_noncomment": 39,
+      "cyclomatic_method_sum": 4,
+      "method_cyclomatic": {
+        "test_single_sweep_reports_count_without_sleeping": 1,
+        "test_loop_repeats_and_stops_cleanly_on_interrupt": 1,
+        "test_nonpositive_interval_is_rejected_before_sweep": 2
+      }
+    },
+    {
+      "class": "CookieJWTAuthentication",
+      "path": "backend/guards/authentication.py",
+      "line_start": 17,
+      "line_end": 31,
+      "loc_nonblank_noncomment": 10,
+      "cyclomatic_method_sum": 2,
+      "method_cyclomatic": {
+        "authenticate": 2
+      }
+    },
+    {
+      "class": "RequireAuth",
+      "path": "backend/guards/permissions.py",
+      "line_start": 6,
+      "line_end": 16,
+      "loc_nonblank_noncomment": 9,
+      "cyclomatic_method_sum": 3,
+      "method_cyclomatic": {
+        "has_permission": 3
+      }
+    },
+    {
+      "class": "RequireRole",
+      "path": "backend/guards/permissions.py",
+      "line_start": 19,
+      "line_end": 30,
+      "loc_nonblank_noncomment": 10,
+      "cyclomatic_method_sum": 3,
+      "method_cyclomatic": {
+        "has_permission": 3
+      }
+    },
+    {
+      "class": "RequireCustomer",
+      "path": "backend/guards/permissions.py",
+      "line_start": 33,
+      "line_end": 34,
+      "loc_nonblank_noncomment": 2,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "RequireCourier",
+      "path": "backend/guards/permissions.py",
+      "line_start": 37,
+      "line_end": 38,
+      "loc_nonblank_noncomment": 2,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "RequireRestaurantUser",
+      "path": "backend/guards/permissions.py",
+      "line_start": 41,
+      "line_end": 42,
+      "loc_nonblank_noncomment": 2,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "RequireOperator",
+      "path": "backend/guards/permissions.py",
+      "line_start": 45,
+      "line_end": 46,
+      "loc_nonblank_noncomment": 2,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "RequireOwnOrder",
+      "path": "backend/guards/permissions.py",
+      "line_start": 49,
+      "line_end": 62,
+      "loc_nonblank_noncomment": 11,
+      "cyclomatic_method_sum": 2,
+      "method_cyclomatic": {
+        "has_object_permission": 2
+      }
+    },
+    {
+      "class": "RoleGuardTests",
+      "path": "backend/guards/testguard.py",
+      "line_start": 20,
+      "line_end": 79,
+      "loc_nonblank_noncomment": 54,
+      "cyclomatic_method_sum": 14,
+      "method_cyclomatic": {
+        "test_require_auth_accepts_active_users_of_every_role": 2,
+        "test_require_auth_rejects_missing_anonymous_and_inactive_users": 2,
+        "test_each_role_guard_accepts_only_its_role": 3,
+        "test_role_guards_reject_missing_anonymous_and_inactive_users": 3,
+        "test_staff_and_superuser_flags_do_not_bypass_role_checks": 3,
+        "test_base_role_guard_denies_access_without_a_configured_role": 1
+      }
+    },
+    {
+      "class": "OwnOrderGuardTests",
+      "path": "backend/guards/testguard.py",
+      "line_start": 82,
+      "line_end": 129,
+      "loc_nonblank_noncomment": 43,
+      "cyclomatic_method_sum": 8,
+      "method_cyclomatic": {
+        "setUp": 1,
+        "test_customer_can_access_own_order": 1,
+        "test_customer_cannot_access_another_customers_order": 1,
+        "test_noncustomer_cannot_access_order_even_with_matching_user_id": 2,
+        "test_missing_anonymous_and_inactive_users_cannot_access_order": 2,
+        "test_superuser_cannot_access_another_customers_order": 1
+      }
+    },
+    {
+      "class": "CookieJWTAuthenticationTests",
+      "path": "backend/guards/tests.py",
+      "line_start": 15,
+      "line_end": 150,
+      "loc_nonblank_noncomment": 108,
+      "cyclomatic_method_sum": 19,
+      "method_cyclomatic": {
+        "setUp": 1,
+        "make_request": 3,
+        "test_valid_access_token_returns_current_database_user": 1,
+        "test_missing_cookie_returns_no_authentication": 1,
+        "test_malformed_token_is_rejected": 1,
+        "test_tampered_signature_is_rejected": 2,
+        "test_expired_access_token_is_rejected": 1,
+        "test_refresh_token_cannot_authenticate": 1,
+        "test_deleted_user_is_rejected": 1,
+        "test_inactive_user_is_rejected": 1,
+        "test_get_does_not_require_csrf_token": 1,
+        "test_unsafe_methods_require_csrf": 2,
+        "test_mismatched_csrf_token_is_rejected": 1,
+        "test_matching_csrf_token_allows_post": 1,
+        "test_untrusted_origin_is_rejected_even_with_valid_csrf_token": 1
+      }
+    },
+    {
+      "class": "AddressLookupUnavailable",
+      "path": "backend/orders/address_lookup.py",
+      "line_start": 17,
+      "line_end": 19,
+      "loc_nonblank_noncomment": 3,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "OrdersConfig",
+      "path": "backend/orders/apps.py",
+      "line_start": 4,
+      "line_end": 5,
+      "loc_nonblank_noncomment": 2,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "OrderCommand",
+      "path": "backend/orders/commands.py",
+      "line_start": 17,
+      "line_end": 20,
+      "loc_nonblank_noncomment": 4,
+      "cyclomatic_method_sum": 1,
+      "method_cyclomatic": {
+        "execute": 1
+      }
+    },
+    {
+      "class": "PlaceOrderCommand",
+      "path": "backend/orders/commands.py",
+      "line_start": 24,
+      "line_end": 121,
+      "loc_nonblank_noncomment": 84,
+      "cyclomatic_method_sum": 17,
+      "method_cyclomatic": {
+        "__init__": 1,
+        "execute": 1,
+        "_validate_customer": 3,
+        "_get_restaurant": 3,
+        "_prepare_order_lines": 4,
+        "_create_order": 1,
+        "_update_customer_address": 1,
+        "_record_placement": 1,
+        "_create_order_lines": 2
+      }
+    },
+    {
+      "class": "RestaurantMenuCommand",
+      "path": "backend/orders/commands.py",
+      "line_start": 126,
+      "line_end": 138,
+      "loc_nonblank_noncomment": 12,
+      "cyclomatic_method_sum": 4,
+      "method_cyclomatic": {
+        "__init__": 1,
+        "get_restaurant": 3
+      }
+    },
+    {
+      "class": "CreateMenuItemCommand",
+      "path": "backend/orders/commands.py",
+      "line_start": 141,
+      "line_end": 166,
+      "loc_nonblank_noncomment": 23,
+      "cyclomatic_method_sum": 4,
+      "method_cyclomatic": {
+        "__init__": 1,
+        "execute": 3
+      }
+    },
+    {
+      "class": "UpdateMenuItemCommand",
+      "path": "backend/orders/commands.py",
+      "line_start": 169,
+      "line_end": 198,
+      "loc_nonblank_noncomment": 28,
+      "cyclomatic_method_sum": 5,
+      "method_cyclomatic": {
+        "__init__": 1,
+        "execute": 4
+      }
+    },
+    {
+      "class": "OrderConflict",
+      "path": "backend/orders/commands.py",
+      "line_start": 201,
+      "line_end": 205,
+      "loc_nonblank_noncomment": 5,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "RestaurantOrderCommand",
+      "path": "backend/orders/commands.py",
+      "line_start": 208,
+      "line_end": 286,
+      "loc_nonblank_noncomment": 62,
+      "cyclomatic_method_sum": 13,
+      "method_cyclomatic": {
+        "target_status": 1,
+        "__init__": 1,
+        "eligible_orders": 1,
+        "conflict": 1,
+        "execute": 9
+      }
+    },
+    {
+      "class": "PlacedQueueCommand",
+      "path": "backend/orders/commands.py",
+      "line_start": 288,
+      "line_end": 296,
+      "loc_nonblank_noncomment": 8,
+      "cyclomatic_method_sum": 2,
+      "method_cyclomatic": {
+        "eligible_orders": 1,
+        "conflict": 1
+      }
+    },
+    {
+      "class": "AcceptOrderCommand",
+      "path": "backend/orders/commands.py",
+      "line_start": 299,
+      "line_end": 300,
+      "loc_nonblank_noncomment": 2,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "RejectOrderCommand",
+      "path": "backend/orders/commands.py",
+      "line_start": 303,
+      "line_end": 304,
+      "loc_nonblank_noncomment": 2,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "CancelOrderCommand",
+      "path": "backend/orders/commands.py",
+      "line_start": 307,
+      "line_end": 367,
+      "loc_nonblank_noncomment": 50,
+      "cyclomatic_method_sum": 11,
+      "method_cyclomatic": {
+        "__init__": 1,
+        "order_queryset": 1,
+        "eligible_orders": 1,
+        "execute": 8
+      }
+    },
+    {
+      "class": "CustomerCancelOrderCommand",
+      "path": "backend/orders/commands.py",
+      "line_start": 370,
+      "line_end": 376,
+      "loc_nonblank_noncomment": 6,
+      "cyclomatic_method_sum": 1,
+      "method_cyclomatic": {
+        "order_queryset": 1
+      }
+    },
+    {
+      "class": "OperatorCancelOrderCommand",
+      "path": "backend/orders/commands.py",
+      "line_start": 379,
+      "line_end": 386,
+      "loc_nonblank_noncomment": 8,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "StartPreparationCommand",
+      "path": "backend/orders/commands.py",
+      "line_start": 389,
+      "line_end": 412,
+      "loc_nonblank_noncomment": 21,
+      "cyclomatic_method_sum": 2,
+      "method_cyclomatic": {
+        "eligible_orders": 1,
+        "conflict": 1
+      }
+    },
+    {
+      "class": "MarkOrderReadyCommand",
+      "path": "backend/orders/commands.py",
+      "line_start": 415,
+      "line_end": 424,
+      "loc_nonblank_noncomment": 9,
+      "cyclomatic_method_sum": 1,
+      "method_cyclomatic": {
+        "execute": 1
+      }
+    },
+    {
+      "class": "CustomerOrderListView",
+      "path": "backend/orders/dashboard_views.py",
+      "line_start": 21,
+      "line_end": 29,
+      "loc_nonblank_noncomment": 8,
+      "cyclomatic_method_sum": 1,
+      "method_cyclomatic": {
+        "get_queryset": 1
+      }
+    },
+    {
+      "class": "RestaurantListView",
+      "path": "backend/orders/dashboard_views.py",
+      "line_start": 33,
+      "line_end": 36,
+      "loc_nonblank_noncomment": 4,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "RestaurantMenuView",
+      "path": "backend/orders/dashboard_views.py",
+      "line_start": 40,
+      "line_end": 76,
+      "loc_nonblank_noncomment": 33,
+      "cyclomatic_method_sum": 7,
+      "method_cyclomatic": {
+        "get_permissions": 2,
+        "get_serializer_class": 2,
+        "get_queryset": 2,
+        "create": 1
+      }
+    },
+    {
+      "class": "RestaurantMenuItemView",
+      "path": "backend/orders/dashboard_views.py",
+      "line_start": 79,
+      "line_end": 97,
+      "loc_nonblank_noncomment": 18,
+      "cyclomatic_method_sum": 2,
+      "method_cyclomatic": {
+        "patch": 2
+      }
+    },
+    {
+      "class": "RestaurantPauseActivityView",
+      "path": "backend/orders/dashboard_views.py",
+      "line_start": 100,
+      "line_end": 117,
+      "loc_nonblank_noncomment": 13,
+      "cyclomatic_method_sum": 4,
+      "method_cyclomatic": {
+        "get_queryset": 1,
+        "post": 3
+      }
+    },
+    {
+      "class": "RestaurantOrderBoardView",
+      "path": "backend/orders/dashboard_views.py",
+      "line_start": 120,
+      "line_end": 132,
+      "loc_nonblank_noncomment": 12,
+      "cyclomatic_method_sum": 1,
+      "method_cyclomatic": {
+        "get": 1
+      }
+    },
+    {
+      "class": "OperatorOverviewView",
+      "path": "backend/orders/dashboard_views.py",
+      "line_start": 136,
+      "line_end": 155,
+      "loc_nonblank_noncomment": 19,
+      "cyclomatic_method_sum": 2,
+      "method_cyclomatic": {
+        "get": 2
+      }
+    },
+    {
+      "class": "Command",
+      "path": "backend/orders/management/commands/seed_data.py",
+      "line_start": 9,
+      "line_end": 298,
+      "loc_nonblank_noncomment": 247,
+      "cyclomatic_method_sum": 22,
+      "method_cyclomatic": {
+        "add_arguments": 1,
+        "restore_record": 4,
+        "handle": 17
+      }
+    },
+    {
+      "class": "Command",
+      "path": "backend/orders/management/commands/setup_demo.py",
+      "line_start": 9,
+      "line_end": 29,
+      "loc_nonblank_noncomment": 20,
+      "cyclomatic_method_sum": 5,
+      "method_cyclomatic": {
+        "handle": 5
+      }
+    },
+    {
+      "class": "DashboardMapView",
+      "path": "backend/orders/map_views.py",
+      "line_start": 15,
+      "line_end": 150,
+      "loc_nonblank_noncomment": 131,
+      "cyclomatic_method_sum": 49,
+      "method_cyclomatic": {
+        "get": 48,
+        "point": 1
+      }
+    },
+    {
+      "class": "Restaurant",
+      "path": "backend/orders/models.py",
+      "line_start": 5,
+      "line_end": 37,
+      "loc_nonblank_noncomment": 26,
+      "cyclomatic_method_sum": 1,
+      "method_cyclomatic": {
+        "__str__": 1
+      }
+    },
+    {
+      "class": "Restaurant.Status",
+      "path": "backend/orders/models.py",
+      "line_start": 7,
+      "line_end": 10,
+      "loc_nonblank_noncomment": 4,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "MenuItem",
+      "path": "backend/orders/models.py",
+      "line_start": 39,
+      "line_end": 73,
+      "loc_nonblank_noncomment": 28,
+      "cyclomatic_method_sum": 1,
+      "method_cyclomatic": {
+        "__str__": 1
+      }
+    },
+    {
+      "class": "MenuItem.Status",
+      "path": "backend/orders/models.py",
+      "line_start": 41,
+      "line_end": 43,
+      "loc_nonblank_noncomment": 3,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "MenuItem.Meta",
+      "path": "backend/orders/models.py",
+      "line_start": 64,
+      "line_end": 70,
+      "loc_nonblank_noncomment": 7,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "Order",
+      "path": "backend/orders/models.py",
+      "line_start": 75,
+      "line_end": 132,
+      "loc_nonblank_noncomment": 46,
+      "cyclomatic_method_sum": 3,
+      "method_cyclomatic": {
+        "state": 1,
+        "transition": 1,
+        "__str__": 1
+      }
+    },
+    {
+      "class": "Order.Status",
+      "path": "backend/orders/models.py",
+      "line_start": 86,
+      "line_end": 96,
+      "loc_nonblank_noncomment": 11,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "OrderStatusEvent",
+      "path": "backend/orders/models.py",
+      "line_start": 134,
+      "line_end": 194,
+      "loc_nonblank_noncomment": 49,
+      "cyclomatic_method_sum": 5,
+      "method_cyclomatic": {
+        "save": 4,
+        "__str__": 1
+      }
+    },
+    {
+      "class": "OrderStatusEvent.Meta",
+      "path": "backend/orders/models.py",
+      "line_start": 178,
+      "line_end": 185,
+      "loc_nonblank_noncomment": 8,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "OrderLine",
+      "path": "backend/orders/models.py",
+      "line_start": 196,
+      "line_end": 218,
+      "loc_nonblank_noncomment": 18,
+      "cyclomatic_method_sum": 1,
+      "method_cyclomatic": {
+        "__str__": 1
+      }
+    },
+    {
+      "class": "RestaurantSerializer",
+      "path": "backend/orders/serializers.py",
+      "line_start": 6,
+      "line_end": 16,
+      "loc_nonblank_noncomment": 11,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "RestaurantSerializer.Meta",
+      "path": "backend/orders/serializers.py",
+      "line_start": 7,
+      "line_end": 16,
+      "loc_nonblank_noncomment": 10,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "MenuItemSerializer",
+      "path": "backend/orders/serializers.py",
+      "line_start": 18,
+      "line_end": 28,
+      "loc_nonblank_noncomment": 11,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "MenuItemSerializer.Meta",
+      "path": "backend/orders/serializers.py",
+      "line_start": 19,
+      "line_end": 28,
+      "loc_nonblank_noncomment": 10,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "MenuItemWriteSerializer",
+      "path": "backend/orders/serializers.py",
+      "line_start": 31,
+      "line_end": 42,
+      "loc_nonblank_noncomment": 12,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "OrderItemInputSerializer",
+      "path": "backend/orders/serializers.py",
+      "line_start": 44,
+      "line_end": 46,
+      "loc_nonblank_noncomment": 3,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "PlaceOrderSerializer",
+      "path": "backend/orders/serializers.py",
+      "line_start": 49,
+      "line_end": 63,
+      "loc_nonblank_noncomment": 12,
+      "cyclomatic_method_sum": 3,
+      "method_cyclomatic": {
+        "validate_items": 3
+      }
+    },
+    {
+      "class": "RestaurantOrderLineSerializer",
+      "path": "backend/orders/serializers.py",
+      "line_start": 66,
+      "line_end": 71,
+      "loc_nonblank_noncomment": 5,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "RestaurantOrderLineSerializer.Meta",
+      "path": "backend/orders/serializers.py",
+      "line_start": 69,
+      "line_end": 71,
+      "loc_nonblank_noncomment": 3,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "RestaurantOrderSerializer",
+      "path": "backend/orders/serializers.py",
+      "line_start": 74,
+      "line_end": 85,
+      "loc_nonblank_noncomment": 10,
+      "cyclomatic_method_sum": 2,
+      "method_cyclomatic": {
+        "get_total": 2
+      }
+    },
+    {
+      "class": "RestaurantOrderSerializer.Meta",
+      "path": "backend/orders/serializers.py",
+      "line_start": 83,
+      "line_end": 85,
+      "loc_nonblank_noncomment": 3,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "OrderStatusSerializer",
+      "path": "backend/orders/serializers.py",
+      "line_start": 88,
+      "line_end": 90,
+      "loc_nonblank_noncomment": 3,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "OperatorCancelOrderSerializer",
+      "path": "backend/orders/serializers.py",
+      "line_start": 93,
+      "line_end": 100,
+      "loc_nonblank_noncomment": 8,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "AddressQuerySerializer",
+      "path": "backend/orders/serializers.py",
+      "line_start": 103,
+      "line_end": 104,
+      "loc_nonblank_noncomment": 2,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "LocationSerializer",
+      "path": "backend/orders/serializers.py",
+      "line_start": 107,
+      "line_end": 109,
+      "loc_nonblank_noncomment": 3,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "OrderState",
+      "path": "backend/orders/states.py",
+      "line_start": 4,
+      "line_end": 7,
+      "loc_nonblank_noncomment": 4,
+      "cyclomatic_method_sum": 1,
+      "method_cyclomatic": {
+        "transition": 1
+      }
+    },
+    {
+      "class": "PlacedState",
+      "path": "backend/orders/states.py",
+      "line_start": 9,
+      "line_end": 19,
+      "loc_nonblank_noncomment": 11,
+      "cyclomatic_method_sum": 4,
+      "method_cyclomatic": {
+        "transition": 4
+      }
+    },
+    {
+      "class": "AcceptedState",
+      "path": "backend/orders/states.py",
+      "line_start": 21,
+      "line_end": 29,
+      "loc_nonblank_noncomment": 9,
+      "cyclomatic_method_sum": 3,
+      "method_cyclomatic": {
+        "transition": 3
+      }
+    },
+    {
+      "class": "PreparingState",
+      "path": "backend/orders/states.py",
+      "line_start": 31,
+      "line_end": 39,
+      "loc_nonblank_noncomment": 9,
+      "cyclomatic_method_sum": 3,
+      "method_cyclomatic": {
+        "transition": 3
+      }
+    },
+    {
+      "class": "ReadyState",
+      "path": "backend/orders/states.py",
+      "line_start": 41,
+      "line_end": 49,
+      "loc_nonblank_noncomment": 9,
+      "cyclomatic_method_sum": 3,
+      "method_cyclomatic": {
+        "transition": 3
+      }
+    },
+    {
+      "class": "PickedUpState",
+      "path": "backend/orders/states.py",
+      "line_start": 51,
+      "line_end": 57,
+      "loc_nonblank_noncomment": 7,
+      "cyclomatic_method_sum": 2,
+      "method_cyclomatic": {
+        "transition": 2
+      }
+    },
+    {
+      "class": "DeliveredState",
+      "path": "backend/orders/states.py",
+      "line_start": 59,
+      "line_end": 67,
+      "loc_nonblank_noncomment": 8,
+      "cyclomatic_method_sum": 3,
+      "method_cyclomatic": {
+        "transition": 3
+      }
+    },
+    {
+      "class": "RejectedState",
+      "path": "backend/orders/states.py",
+      "line_start": 70,
+      "line_end": 74,
+      "loc_nonblank_noncomment": 4,
+      "cyclomatic_method_sum": 1,
+      "method_cyclomatic": {
+        "transition": 1
+      }
+    },
+    {
+      "class": "CancelledState",
+      "path": "backend/orders/states.py",
+      "line_start": 77,
+      "line_end": 81,
+      "loc_nonblank_noncomment": 4,
+      "cyclomatic_method_sum": 1,
+      "method_cyclomatic": {
+        "transition": 1
+      }
+    },
+    {
+      "class": "PartiallyRefundedState",
+      "path": "backend/orders/states.py",
+      "line_start": 84,
+      "line_end": 92,
+      "loc_nonblank_noncomment": 8,
+      "cyclomatic_method_sum": 2,
+      "method_cyclomatic": {
+        "transition": 2
+      }
+    },
+    {
+      "class": "RefundedState",
+      "path": "backend/orders/states.py",
+      "line_start": 95,
+      "line_end": 99,
+      "loc_nonblank_noncomment": 4,
+      "cyclomatic_method_sum": 1,
+      "method_cyclomatic": {
+        "transition": 1
+      }
+    },
+    {
+      "class": "RestaurantMenuCommandTests",
+      "path": "backend/orders/test_menu_management.py",
+      "line_start": 19,
+      "line_end": 239,
+      "loc_nonblank_noncomment": 201,
+      "cyclomatic_method_sum": 9,
+      "method_cyclomatic": {
+        "setUp": 1,
+        "test_owner_can_create_and_update_item_fields": 1,
+        "test_menu_commands_reject_non_restaurant_and_non_owner": 1,
+        "test_duplicate_name_is_rejected_for_same_restaurant": 1,
+        "test_menu_api_restricts_create_and_update_to_owner": 1,
+        "test_owner_can_create_and_edit_menu_item_through_api": 1,
+        "test_restaurant_menu_read_does_not_expose_other_owners_menu": 1,
+        "test_customer_sees_sold_out_item_but_cannot_order_it": 1,
+        "test_price_change_does_not_rewrite_existing_order_line": 1
+      }
+    },
+    {
+      "class": "OrderStatusEventTests",
+      "path": "backend/orders/test_order_events.py",
+      "line_start": 27,
+      "line_end": 220,
+      "loc_nonblank_noncomment": 175,
+      "cyclomatic_method_sum": 11,
+      "method_cyclomatic": {
+        "setUp": 1,
+        "place_order": 1,
+        "assert_event": 1,
+        "test_order_lifecycle_records_each_actor_and_transition": 2,
+        "test_cancellation_records_event_and_invalidates_pending_offer_atomically": 1,
+        "test_event_failure_rolls_back_order_placement": 1,
+        "test_event_failure_rolls_back_restaurant_transition": 1,
+        "test_customer_cancellation_records_event": 1,
+        "test_delivery_event_failure_rolls_back_delivery_state": 2
+      }
+    },
+    {
+      "class": "OrderTerminalStateTests",
+      "path": "backend/orders/test_order_states.py",
+      "line_start": 7,
+      "line_end": 58,
+      "loc_nonblank_noncomment": 42,
+      "cyclomatic_method_sum": 7,
+      "method_cyclomatic": {
+        "setUp": 1,
+        "make_order": 1,
+        "test_rejected_and_cancelled_orders_are_terminal_without_events": 3,
+        "test_delivered_order_can_transition_to_refunded": 1,
+        "test_valid_partial_refund_path_is_preserved": 1
+      }
+    },
+    {
+      "class": "PlaceOrderCommandTests",
+      "path": "backend/orders/test_place_order_command.py",
+      "line_start": 14,
+      "line_end": 247,
+      "loc_nonblank_noncomment": 188,
+      "cyclomatic_method_sum": 17,
+      "method_cyclomatic": {
+        "setUp": 1,
+        "place_order": 1,
+        "assert_no_order_created": 1,
+        "test_valid_order_created": 1,
+        "test_multiple_order_lines_created": 1,
+        "test_inactive_customer_rejected": 1,
+        "test_restaurant_account_cannot_place_order": 1,
+        "test_nonexistent_restaurant_rejected": 1,
+        "test_closed_restaurant_rejected": 1,
+        "test_paused_restaurant_rejected": 1,
+        "test_item_from_another_restaurant_rejected": 1,
+        "test_sold_out_item_rejected": 1,
+        "test_invalid_address_rejected": 1,
+        "test_customer_address_updated": 1,
+        "test_order_preserves_original_menu_price": 1,
+        "test_initial_status_event_recorded": 1,
+        "test_order_creation_rolled_back_on_failure": 1
+      }
+    },
+    {
+      "class": "CheckoutAddressTests",
+      "path": "backend/orders/tests.py",
+      "line_start": 17,
+      "line_end": 52,
+      "loc_nonblank_noncomment": 33,
+      "cyclomatic_method_sum": 7,
+      "method_cyclomatic": {
+        "setUp": 1,
+        "token": 1,
+        "test_missing_blank_invalid_and_other_customers_address_rejected": 3,
+        "test_address_saved_to_customer_without_changing_previous_order": 2
+      }
+    },
+    {
+      "class": "DemoSeedTests",
+      "path": "backend/orders/tests.py",
+      "line_start": 55,
+      "line_end": 137,
+      "loc_nonblank_noncomment": 78,
+      "cyclomatic_method_sum": 11,
+      "method_cyclomatic": {
+        "test_reset_restores_addresses_and_all_map_colors": 6,
+        "test_reset_endpoint_is_operator_only_and_operator_can_reset": 2,
+        "test_standard_seed_populates_customer_and_order_addresses": 3
+      }
+    },
+    {
+      "class": "PlaceOrderView",
+      "path": "backend/orders/views.py",
+      "line_start": 31,
+      "line_end": 59,
+      "loc_nonblank_noncomment": 24,
+      "cyclomatic_method_sum": 2,
+      "method_cyclomatic": {
+        "create": 2
+      }
+    },
+    {
+      "class": "RestaurantOrderStatusView",
+      "path": "backend/orders/views.py",
+      "line_start": 62,
+      "line_end": 81,
+      "loc_nonblank_noncomment": 16,
+      "cyclomatic_method_sum": 1,
+      "method_cyclomatic": {
+        "patch": 1
+      }
+    },
+    {
+      "class": "OperatorOrderEventSerializer",
+      "path": "backend/orders/views.py",
+      "line_start": 84,
+      "line_end": 95,
+      "loc_nonblank_noncomment": 12,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "OperatorOrderEventSerializer.Meta",
+      "path": "backend/orders/views.py",
+      "line_start": 85,
+      "line_end": 95,
+      "loc_nonblank_noncomment": 11,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "OperatorOrderHistorySerializer",
+      "path": "backend/orders/views.py",
+      "line_start": 98,
+      "line_end": 135,
+      "loc_nonblank_noncomment": 36,
+      "cyclomatic_method_sum": 2,
+      "method_cyclomatic": {
+        "get_items": 2
+      }
+    },
+    {
+      "class": "OperatorOrderHistorySerializer.Meta",
+      "path": "backend/orders/views.py",
+      "line_start": 114,
+      "line_end": 124,
+      "loc_nonblank_noncomment": 11,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "OperatorOrderHistoryView",
+      "path": "backend/orders/views.py",
+      "line_start": 138,
+      "line_end": 156,
+      "loc_nonblank_noncomment": 17,
+      "cyclomatic_method_sum": 3,
+      "method_cyclomatic": {
+        "get_queryset": 3
+      }
+    },
+    {
+      "class": "CustomerCancelOrderView",
+      "path": "backend/orders/views.py",
+      "line_start": 157,
+      "line_end": 166,
+      "loc_nonblank_noncomment": 9,
+      "cyclomatic_method_sum": 1,
+      "method_cyclomatic": {
+        "post": 1
+      }
+    },
+    {
+      "class": "OperatorCancelOrderView",
+      "path": "backend/orders/views.py",
+      "line_start": 169,
+      "line_end": 181,
+      "loc_nonblank_noncomment": 12,
+      "cyclomatic_method_sum": 1,
+      "method_cyclomatic": {
+        "post": 1
+      }
+    },
+    {
+      "class": "AddressLookupView",
+      "path": "backend/orders/views.py",
+      "line_start": 185,
+      "line_end": 198,
+      "loc_nonblank_noncomment": 13,
+      "cyclomatic_method_sum": 2,
+      "method_cyclomatic": {
+        "post": 2
+      }
+    },
+    {
+      "class": "MapLocationView",
+      "path": "backend/orders/views.py",
+      "line_start": 201,
+      "line_end": 213,
+      "loc_nonblank_noncomment": 12,
+      "cyclomatic_method_sum": 2,
+      "method_cyclomatic": {
+        "patch": 2
+      }
+    },
+    {
+      "class": "DemoResetView",
+      "path": "backend/orders/views.py",
+      "line_start": 216,
+      "line_end": 223,
+      "loc_nonblank_noncomment": 7,
+      "cyclomatic_method_sum": 1,
+      "method_cyclomatic": {
+        "post": 1
+      }
+    },
+    {
+      "class": "OrderLedger",
+      "path": "backend/pricing/models.py",
+      "line_start": 5,
+      "line_end": 33,
+      "loc_nonblank_noncomment": 19,
+      "cyclomatic_method_sum": 1,
+      "method_cyclomatic": {
+        "__str__": 1
+      }
+    },
+    {
+      "class": "RefundRequest",
+      "path": "backend/pricing/models.py",
+      "line_start": 35,
+      "line_end": 115,
+      "loc_nonblank_noncomment": 66,
+      "cyclomatic_method_sum": 1,
+      "method_cyclomatic": {
+        "__str__": 1
+      }
+    },
+    {
+      "class": "RefundRequest.Reason",
+      "path": "backend/pricing/models.py",
+      "line_start": 37,
+      "line_end": 45,
+      "loc_nonblank_noncomment": 9,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "RefundRequest.Status",
+      "path": "backend/pricing/models.py",
+      "line_start": 47,
+      "line_end": 50,
+      "loc_nonblank_noncomment": 4,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "RefundRequest.Meta",
+      "path": "backend/pricing/models.py",
+      "line_start": 105,
+      "line_end": 112,
+      "loc_nonblank_noncomment": 8,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "RefundLedgerEntry",
+      "path": "backend/pricing/models.py",
+      "line_start": 118,
+      "line_end": 146,
+      "loc_nonblank_noncomment": 23,
+      "cyclomatic_method_sum": 1,
+      "method_cyclomatic": {
+        "__str__": 1
+      }
+    },
+    {
+      "class": "RefundRequestCreateSerializer",
+      "path": "backend/pricing/serializers.py",
+      "line_start": 5,
+      "line_end": 14,
+      "loc_nonblank_noncomment": 10,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "RefundDecisionSerializer",
+      "path": "backend/pricing/serializers.py",
+      "line_start": 17,
+      "line_end": 32,
+      "loc_nonblank_noncomment": 14,
+      "cyclomatic_method_sum": 0,
+      "method_cyclomatic": {}
+    },
+    {
+      "class": "OperatorLedgerViewTests",
+      "path": "backend/pricing/test_operator_ledger.py",
+      "line_start": 14,
+      "line_end": 293,
+      "loc_nonblank_noncomment": 196,
+      "cyclomatic_method_sum": 14,
+      "method_cyclomatic": {
+        "setUp": 1,
+        "create_ledger_entry": 2,
+        "create_refund": 1,
+        "test_operator_can_access_ledger": 1,
+        "test_customer_cannot_access_ledger": 1,
+        "test_inactive_operator_cannot_access_ledger": 1,
+        "test_ledger_entries_are_ordered_by_finalized_at_descending": 2,
+        "test_refunds_are_ordered_by_created_at_ascending": 2,
+        "test_ledger_response_contains_correct_order_details": 1,
+        "test_refund_totals_and_net_charge_are_correct": 1,
+        "test_ledger_response_contains_refund_details": 1
+      }
+    },
+    {
+      "class": "PricingTests",
+      "path": "backend/pricing/tests.py",
+      "line_start": 17,
+      "line_end": 70,
+      "loc_nonblank_noncomment": 39,
+      "cyclomatic_method_sum": 8,
+      "method_cyclomatic": {
+        "calculate": 2,
+        "test_regular_order": 1,
+        "test_small_order": 1,
+        "test_order_at_threshold": 1,
+        "test_multiple_items": 1,
+        "test_invalid_quantity": 1,
+        "test_deterministic_pricing": 1
+      }
+    },
+    {
+      "class": "OrderSummaryTests",
+      "path": "backend/pricing/tests.py",
+      "line_start": 74,
+      "line_end": 288,
+      "loc_nonblank_noncomment": 158,
+      "cyclomatic_method_sum": 16,
+      "method_cyclomatic": {
+        "setUp": 1,
+        "test_delivered_order_summary": 1,
+        "test_summary_before_delivery": 1,
+        "test_customer_cannot_view_other_orders": 1,
+        "test_complete_summary_response": 1,
+        "test_refunded_statuses_allow_summary": 2,
+        "test_all_non_summary_statuses_return_conflict": 2,
+        "test_missing_order_returns_not_found": 1,
+        "test_unauthenticated_request_is_denied": 1,
+        "test_non_customer_roles_are_denied": 2,
+        "test_inactive_customer_is_denied": 1,
+        "test_small_order_summary_includes_surcharge": 1,
+        "test_multiple_items_use_order_prices": 1
+      }
+    },
+    {
+      "class": "OrderSummaryView",
+      "path": "backend/pricing/views.py",
+      "line_start": 25,
+      "line_end": 74,
+      "loc_nonblank_noncomment": 43,
+      "cyclomatic_method_sum": 5,
+      "method_cyclomatic": {
+        "get": 2,
+        "_is_summary_available": 1,
+        "_build_items": 2
+      }
+    },
+    {
+      "class": "OperatorLedgerView",
+      "path": "backend/pricing/views.py",
+      "line_start": 77,
+      "line_end": 158,
+      "loc_nonblank_noncomment": 68,
+      "cyclomatic_method_sum": 9,
+      "method_cyclomatic": {
+        "get": 4,
+        "_serialize_refunds": 2,
+        "_serialize_items": 2,
+        "_serialize_ledger_entry": 1
+      }
+    },
+    {
+      "class": "CustomerRefundRequestView",
+      "path": "backend/pricing/views.py",
+      "line_start": 161,
+      "line_end": 224,
+      "loc_nonblank_noncomment": 57,
+      "cyclomatic_method_sum": 6,
+      "method_cyclomatic": {
+        "post": 2,
+        "get": 4
+      }
+    },
+    {
+      "class": "OperatorRefundRequestListView",
+      "path": "backend/pricing/views.py",
+      "line_start": 227,
+      "line_end": 279,
+      "loc_nonblank_noncomment": 49,
+      "cyclomatic_method_sum": 7,
+      "method_cyclomatic": {
+        "get": 7
+      }
+    },
+    {
+      "class": "OperatorRefundDecisionView",
+      "path": "backend/pricing/views.py",
+      "line_start": 282,
+      "line_end": 318,
+      "loc_nonblank_noncomment": 32,
+      "cyclomatic_method_sum": 4,
+      "method_cyclomatic": {
+        "patch": 4
+      }
+    }
+  ]
+}
