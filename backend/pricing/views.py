@@ -67,6 +67,7 @@ class OrderSummaryView(APIView):
             "total": str(pricing["total"])
         })
 
+
 class OperatorLedgerView(APIView):
     permission_classes = [RequireAuth]
 
@@ -90,58 +91,66 @@ class OperatorLedgerView(APIView):
             .order_by("-finalized_at")
         )
 
-        ledger = []
-
-        for entry in entries:
-            refunds = [
-                {
-                    "refund_id": refund.id,
-                    "refund_request_id": refund.refund_request_id,
-                    "amount": str(refund.amount),
-                    "created_at": refund.created_at,
-                    "operator": refund.operator.username,
-                }
-                for refund in entry.refund_entries.all().order_by("created_at")
-            ]
-
-            total_refunded = get_total_refunded(entry)
-            net_charge = money(entry.total_charge - total_refunded)
-
-            ledger.append({
-                "order_id": entry.order_id,
-                "restaurant": entry.order.restaurant.name,
-                "final_state": entry.final_state,
-                "current_order_status": entry.order.status,
-                "order_created_at": entry.order_created_at,
-                "finalized_at": entry.finalized_at,
-
-                "items": [
-                    {
-                        "name": line.menu_item.name,
-                        "quantity": line.quantity,
-                        "unit_price": str(line.unit_price),
-                        "line_total": str(line.unit_price * line.quantity),
-                    }
-                    for line in entry.order.lines.all()
-                ],
-
-                "subtotal": str(entry.subtotal),
-                "delivery_fee": str(entry.delivery_fee),
-                "service_fee": str(entry.service_fee),
-                "small_order_surcharge": str(
-                    entry.small_order_surcharge
-                ),
-
-                # Original charge is never modified.
-                "total_charge": str(entry.total_charge),
-
-                # Separate refund transactions.
-                "refunds": refunds,
-                "total_refunded": str(total_refunded),
-                "net_charge": str(net_charge),
-            })
+        ledger = [
+            self._serialize_ledger_entry(entry)
+            for entry in entries
+        ]
 
         return Response(ledger)
+
+    def _serialize_refunds(self, entry):
+        return [
+            {
+                "refund_id": refund.id,
+                "refund_request_id": refund.refund_request_id,
+                "amount": str(refund.amount),
+                "created_at": refund.created_at,
+                "operator": refund.operator.username,
+            }
+            for refund in entry.refund_entries.all().order_by("created_at")
+        ]
+
+    def _serialize_items(self, entry):
+        return [
+            {
+                "name": line.menu_item.name,
+                "quantity": line.quantity,
+                "unit_price": str(line.unit_price),
+                "line_total": str(line.unit_price * line.quantity),
+            }
+            for line in entry.order.lines.all()
+        ]
+
+    def _serialize_ledger_entry(self, entry):
+        total_refunded = get_total_refunded(entry)
+        net_charge = money(entry.total_charge - total_refunded)
+
+        return {
+            "order_id": entry.order_id,
+            "restaurant": entry.order.restaurant.name,
+            "final_state": entry.final_state,
+            "current_order_status": entry.order.status,
+            "order_created_at": entry.order_created_at,
+            "finalized_at": entry.finalized_at,
+
+            "items": self._serialize_items(entry),
+
+            "subtotal": str(entry.subtotal),
+            "delivery_fee": str(entry.delivery_fee),
+            "service_fee": str(entry.service_fee),
+            "small_order_surcharge": str(
+                entry.small_order_surcharge
+            ),
+
+            # Original charge is never modified.
+            "total_charge": str(entry.total_charge),
+
+            # Separate refund transactions.
+            "refunds": self._serialize_refunds(entry),
+            "total_refunded": str(total_refunded),
+            "net_charge": str(net_charge),
+        }
+
 
 class CustomerRefundRequestView(APIView):
     permission_classes = [RequireCustomer]
