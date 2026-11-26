@@ -1,13 +1,17 @@
 """Repeatable local demo baseline with orders across the delivery lifecycle."""
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from rest_framework.exceptions import PermissionDenied
-
 from delivery.models import Courier, DeliveryAssignment
 from pricing.models import RefundLedgerEntry, RefundRequest, OrderLedger
 from .demo_addresses import seed_customer_addresses
 from .models import Order, OrderLine, OrderStatusEvent, Restaurant, MenuItem
+from datetime import timedelta
+from django.utils import timezone
+from .event_services import record_order_status_event
+from pricing.services import record_order_ledger
 
 
 def demo_enabled():
@@ -88,10 +92,6 @@ def reset_demo():
 @transaction.atomic
 def seed_demo_orders():
     """Add sample orders with matching timestamps, history, assignments and charges."""
-    from datetime import timedelta
-    from django.utils import timezone
-    from .event_services import record_order_status_event
-    from pricing.services import record_order_ledger
 
     if not demo_enabled():
         raise PermissionDenied('Local demo mode is not enabled.')

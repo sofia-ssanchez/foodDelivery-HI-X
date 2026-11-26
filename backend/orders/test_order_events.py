@@ -1,10 +1,8 @@
 from unittest.mock import patch
-
 from django.contrib.auth import get_user_model
 from django.core import signing
 from django.test import TestCase
 from rest_framework.test import APIClient
-
 from delivery.commands import (
     AcceptOfferCommand,
     ChangeDutyCommand,
@@ -22,6 +20,7 @@ from .commands import (
 )
 from .models import MenuItem, Order, OrderLine, OrderStatusEvent, Restaurant
 from .address_lookup import SALT
+from .commands import AcceptOrderCommand
 
 
 class OrderStatusEventTests(TestCase):
@@ -162,7 +161,6 @@ class OrderStatusEventTests(TestCase):
             side_effect=RuntimeError("event write failed"),
         ):
             with self.assertRaises(RuntimeError):
-                from .commands import AcceptOrderCommand
 
                 AcceptOrderCommand(
                     actor=self.restaurant_user,

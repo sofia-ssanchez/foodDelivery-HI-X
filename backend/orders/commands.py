@@ -4,7 +4,8 @@ from django.db.models import Subquery
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework.exceptions import APIException, PermissionDenied, ValidationError
-from pricing.services import record_order_ledger
+from pricing.services import record_order_ledger, calculate_line_pricing
+from .checkout import get_restaurant, prepare_checkout_lines
 from delivery import events
 from delivery.models import DeliveryAssignment
 from delivery.services import invalidate_offers_for_cancelled_order
@@ -22,20 +23,24 @@ class OrderCommand(ABC):
 
 
 class PlaceOrderCommand(OrderCommand):
-    def __init__(self, customer, restaurant_id, items, delivery_address_token="", delivery_unit=""):
+    def __init__(self, customer, restaurant_id, items, delivery_address_token="", delivery_unit="", promo_code=""):
         self.customer = customer
         self.restaurant_id = restaurant_id
         self.items = items
         self.delivery_address_token = delivery_address_token
         self.delivery_unit = delivery_unit
+        self.promo_code = promo_code
 
     @transaction.atomic
     def execute(self):
         self._validate_customer()
         location = read_checkout_address(self.delivery_address_token, self.customer.pk)
-        restaurant = self._get_restaurant()
-        order_lines = self._prepare_order_lines(restaurant)
+        restaurant = get_restaurant(self.restaurant_id)
+        order_lines = prepare_checkout_lines(restaurant, self.items)
+        pricing = calculate_line_pricing(order_lines, self.promo_code)
         order = self._create_order(restaurant, location)
+        order.payment_details = {key: str(value) for key, value in pricing.items()}
+        order.save(update_fields=["payment_details"])
         self._update_customer_address(order)
         self._record_placement(order)
         self._create_order_lines(order, order_lines)
@@ -47,46 +52,6 @@ class PlaceOrderCommand(OrderCommand):
             or self.customer.role != self.customer.Role.CUSTOMER
         ):
             raise PermissionDenied("Only customers can place orders.")
-
-    def _get_restaurant(self):
-        try:
-            restaurant = Restaurant.objects.get(id=self.restaurant_id)
-        except Restaurant.DoesNotExist:
-            raise ValidationError("Restaurant does not exist.")
-
-        if restaurant.status != Restaurant.Status.OPEN:
-            raise ValidationError("Restaurant is not open for orders.")
-
-        return restaurant
-
-    def _prepare_order_lines(self, restaurant):
-        order_lines = []
-
-        for item in self.items:
-            try:
-                menu_item = MenuItem.objects.get(
-                    id=item["menu_item_id"],
-                    restaurant=restaurant,
-                )
-            except MenuItem.DoesNotExist:
-                raise ValidationError(
-                    "Menu item does not belong to this restaurant."
-                )
-
-            if menu_item.status != MenuItem.Status.AVAILABLE:
-                raise ValidationError(
-                    f"{menu_item.name} is currently sold out."
-                )
-
-            order_lines.append(
-                {
-                    "menu_item": menu_item,
-                    "quantity": item["quantity"],
-                    "unit_price": menu_item.price,
-                }
-            )
-
-        return order_lines
 
     def _create_order(self, restaurant, location):
         return Order.objects.create(

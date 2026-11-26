@@ -1,17 +1,16 @@
 from unittest.mock import patch
-
 from django.contrib.auth import get_user_model
 from django.core import signing
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework.test import APIClient
-
 from delivery.models import DeliveryAssignment
-
 from .address_lookup import SALT
 from .demo import reset_demo
 from .demo_addresses import MONTREAL_ADDRESSES
 from .models import MenuItem, Order, Restaurant
+from io import StringIO
+from django.core.management import call_command
 
 
 class CheckoutAddressTests(TestCase):
@@ -124,8 +123,6 @@ class DemoSeedTests(TestCase):
         self.assertEqual(response.data["couriers"], 2)
 
     def test_standard_seed_populates_customer_and_order_addresses(self):
-        from io import StringIO
-        from django.core.management import call_command
 
         for restore in (False, True):
             call_command("seed_data", restore_baseline=restore, stdout=StringIO())
