@@ -4,7 +4,7 @@ x-demo:
 
 services:
   web:
-    image: ghcr.io/sofia-ssanchez/fooddelivery-hi-x-web:placeholder
+    image: ghcr.io/sofia-ssanchez/fooddelivery-hi-x-web:934ab0917409d71bccefedca12db12b88a440ae6
     depends_on:
       frontend:
         condition: service_healthy
@@ -17,7 +17,7 @@ services:
       retries: 12
 
   frontend:
-    image: ghcr.io/sofia-ssanchez/fooddelivery-hi-x-frontend:placeholder
+    image: ghcr.io/sofia-ssanchez/fooddelivery-hi-x-frontend:934ab0917409d71bccefedca12db12b88a440ae6
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/ || exit 1"]
       interval: 10s
@@ -26,7 +26,7 @@ services:
       start_period: 20s
 
   backend:
-    image: ghcr.io/sofia-ssanchez/fooddelivery-hi-x-backend:placeholder
+    image: ghcr.io/sofia-ssanchez/fooddelivery-hi-x-backend:934ab0917409d71bccefedca12db12b88a440ae6
     environment:
       DJANGO_SECRET_KEY: demo-platform-key-not-a-secret
       DJANGO_DEBUG: "false"
@@ -45,7 +45,7 @@ services:
       start_period: 20s
 
   dispatch_worker:
-    image: ghcr.io/sofia-ssanchez/fooddelivery-hi-x-backend:placeholder
+    image: ghcr.io/sofia-ssanchez/fooddelivery-hi-x-backend:934ab0917409d71bccefedca12db12b88a440ae6
     command: ["python", "manage.py", "check_stalled_orders", "--loop", "--interval", "30"]
     environment:
       DJANGO_SECRET_KEY: demo-platform-key-not-a-secret
