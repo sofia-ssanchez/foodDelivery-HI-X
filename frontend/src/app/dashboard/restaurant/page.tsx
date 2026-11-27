@@ -17,6 +17,7 @@ type Order = {
   restaurant_name: string;
   customer_name: string;
   status: string;
+  rejection_reason: string;
   created_at: string;
   total: string;
   lines: { id: number; name: string; quantity: number; unit_price: string }[];
@@ -66,6 +67,7 @@ export default function RestaurantDashboard() {
   const [restaurantAddressQuery, setRestaurantAddressQuery] = useState("");
   const [restaurantAddresses, setRestaurantAddresses] = useState<{ address: string; token: string }[]>([]);
   const [restaurantAddressToken, setRestaurantAddressToken] = useState("");
+  const [addressTargetId, setAddressTargetId] = useState<number | null>(null);
   const [creatingRestaurant, setCreatingRestaurant] = useState(false);
   const [menuItems, setMenuItems] = useState<Record<number, MenuItem[]>>({});
   const [promotions, setPromotions] = useState<Promotion[]>([]);
@@ -80,6 +82,8 @@ export default function RestaurantDashboard() {
   const [loaded, setLoaded] = useState(false);
   const [pending, setPending] = useState<number | null>(null);
   const [pendingRestaurant, setPendingRestaurant] = useState<number | null>(null);
+  const [decliningOrderId, setDecliningOrderId] = useState<number | null>(null);
+  const [rejectionReasons, setRejectionReasons] = useState<Record<number, string>>({});
   const busy = useRef(false);
 
   const refresh = useCallback(() => {
@@ -132,7 +136,7 @@ export default function RestaurantDashboard() {
     return () => window.clearInterval(timer);
   }, [refresh]);
 
-  async function advance(order: Order, next: string, title: string) {
+  async function advance(order: Order, next: string, title: string, rejectionReason = "") {
     if (busy.current) return;
     busy.current = true;
     setPending(order.id);
@@ -143,11 +147,13 @@ export default function RestaurantDashboard() {
       const response = await apiFetch(`/api/restaurant/orders/${order.id}/status/`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: next, expected_status: order.status }),
+        body: JSON.stringify({ status: next, expected_status: order.status, ...(next === "rejected" ? { rejection_reason: rejectionReason } : {}) }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || "Could not update this order.");
       setOrders((current) => current.map((item) => item.id === order.id ? data : item));
+      setDecliningOrderId(null);
+      setRejectionReasons((current) => { const nextReasons = { ...current }; delete nextReasons[order.id]; return nextReasons; });
       setNotice(next === "rejected" ? `Order #${order.id} declined.` : `Order #${order.id} moved to ${title}.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not update this order.");
@@ -202,6 +208,7 @@ export default function RestaurantDashboard() {
       setRestaurantAddressQuery("");
       setRestaurantAddressToken("");
       setRestaurantAddresses([]);
+      setAddressTargetId(null);
       setNotice(`${data.name} created. Add your menu items below.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create your restaurant.");
@@ -231,7 +238,7 @@ export default function RestaurantDashboard() {
 
   async function setExistingRestaurantAddress(restaurant: Restaurant, addressToken: string) {
     if (busy.current) return;
-    busy.current = true; setError(""); setNotice("");
+    busy.current = true; setPendingRestaurant(restaurant.id); setError(""); setNotice("");
     try {
       const response = await apiFetch(`/api/restaurants/${restaurant.id}/address/`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ address_token: addressToken }) });
       const data = await response.json();
@@ -239,9 +246,11 @@ export default function RestaurantDashboard() {
       setRestaurants((current) => current.map((item) => item.id === data.id ? data : item));
       setRestaurantAddresses([]);
       setRestaurantAddressQuery("");
+      setRestaurantAddressToken("");
+      setAddressTargetId(null);
       setNotice(`${data.name}'s address saved and locked.`);
     } catch (err) { setError(err instanceof Error ? err.message : "Could not save restaurant address."); }
-    finally { busy.current = false; }
+    finally { busy.current = false; setPendingRestaurant(null); }
   }
 
   function updatePromoDraft(restaurantId: number, changes: Partial<PromotionDraft>) {
@@ -408,12 +417,30 @@ export default function RestaurantDashboard() {
                 </button>
               </div>
             ))}
-            {restaurants.length > 0 && <a className="btn btn-primary" href="#menu-management">Manage menu</a>}
           </div>
         </header>
 
+
+
+        <div className="grid grid-cols-1 md:grid-cols-[200px_minmax(0,1fr)] gap-6 items-start">
+          <nav aria-label="Restaurant order views" className="rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 flex flex-col gap-3 md:sticky md:top-5">
+            <p className="eyebrow px-2 mb-2">Orders</p>
+            {[{ status: "all", title: "All orders" }, ...stages].map((item) => {
+              const count = orders.filter((order) => item.status === "all" ? stages.some((stage) => stage.status === order.status) : order.status === item.status).length;
+              return <button key={item.status} type="button" aria-pressed={selectedStage === item.status} className={`btn btn-full flex justify-between gap-3 ${selectedStage === item.status ? "btn-primary" : "btn-secondary"}`} onClick={() => setSelectedStage(item.status)}>
+                <span className="flex-1 text-left">{item.title}</span><span className="tabular-nums shrink-0 text-right" aria-label={`${count} orders`}>{loaded ? count : "—"}</span>
+              </button>;
+            })}
+            <button type="button" aria-pressed={selectedStage === "map"} className={`btn btn-full ${selectedStage === "map" ? "btn-primary" : "btn-secondary"}`} onClick={() => setSelectedStage("map")}>Map</button>
+            <div className="my-2 border-t border-[var(--color-border)]" />
+            <button type="button" aria-pressed={selectedStage === "manage"} className={`btn btn-full ${selectedStage === "manage" ? "btn-primary" : "btn-secondary"}`} onClick={() => setSelectedStage("manage")}>Manage restaurant</button>
+          </nav>
+          <div className="min-w-0">
+            <div role="status" aria-live="polite" className="mb-3">{notice && <p className={`message ${noticePaused ? "message-warning" : "message-success"}`}>{notice}</p>}</div>
+            {error && <p role="alert" className="message message-error mb-5">{error}</p>}
+            {selectedStage === "manage" && (
         <section id="menu-management" className="mb-8 rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)]/80 p-5" aria-labelledby="menu-management-heading">
-          <h2 id="menu-management-heading" className="text-xl font-bold text-[var(--color-forest)]">Manage menus</h2>
+          <h2 id="menu-management-heading" className="text-xl font-bold text-[var(--color-forest)]">Manage restaurant</h2>
           <p className="form-help mt-1 mb-5">Add items, update prices, and mark items available or sold out.</p>
           {loaded && !restaurants.length && (
             <form className="mb-5 flex flex-wrap items-end gap-3" onSubmit={(event) => void createRestaurant(event)}>
@@ -435,10 +462,11 @@ export default function RestaurantDashboard() {
                 <h3 className="font-bold text-[var(--color-forest)]">{restaurant.name}</h3>
                 {!restaurant.address && <div className="mt-3 rounded-xl border border-dashed border-[var(--color-border)] p-3">
                   <label className="form-label">Set restaurant address once
-                    <input className="form-input mt-1" maxLength={250} placeholder="Search a Montreal street address" value={restaurantAddressQuery} onChange={(event) => { setRestaurantAddressQuery(event.target.value); setRestaurantAddresses([]); }} />
+                    <input className="form-input mt-1" maxLength={250} placeholder="Search a Montreal street address" value={restaurantAddressQuery} onChange={(event) => { setRestaurantAddressQuery(event.target.value); setRestaurantAddressToken(""); setAddressTargetId(null); setRestaurantAddresses([]); }} />
                   </label>
                   <button className="btn btn-secondary mt-2" type="button" disabled={restaurantAddressQuery.trim().length < 5} onClick={() => void findRestaurantAddress()}>Find address</button>
-                  {restaurantAddresses.length > 0 && <ul className="mt-2 space-y-2">{restaurantAddresses.map((result) => <li key={result.address}><button className="btn btn-secondary btn-full text-left" type="button" onClick={() => void setExistingRestaurantAddress(restaurant, result.token)}>{result.address}</button></li>)}</ul>}
+                  {restaurantAddresses.length > 0 && <ul className="mt-2 space-y-2">{restaurantAddresses.map((result) => <li key={result.address}><button className={`btn btn-full text-left ${addressTargetId === restaurant.id && restaurantAddressToken === result.token ? "btn-primary" : "btn-secondary"}`} type="button" onClick={() => { setRestaurantAddressToken(result.token); setAddressTargetId(restaurant.id); }}>{result.address}</button></li>)}</ul>}
+                  {addressTargetId === restaurant.id && restaurantAddressToken && <button className="btn btn-primary mt-2" type="button" disabled={pendingRestaurant === restaurant.id} onClick={() => void setExistingRestaurantAddress(restaurant, restaurantAddressToken)}>{pendingRestaurant === restaurant.id ? "Setting address…" : "Set address"}</button>}
                 </div>}
                 <form className="mt-4 grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_130px_auto] gap-2 items-end" onSubmit={(event) => void addMenuItem(restaurant, event)}>
                   <label className="form-label">New item
@@ -508,24 +536,12 @@ export default function RestaurantDashboard() {
             ))}
           </div>
         </section>
-
-        <div className="grid grid-cols-1 md:grid-cols-[200px_minmax(0,1fr)] gap-6 items-start">
-          <nav aria-label="Restaurant order views" className="rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 flex flex-col gap-3 md:sticky md:top-5">
-            <p className="eyebrow px-2 mb-2">Orders</p>
-            {[{ status: "all", title: "All orders" }, ...stages].map((item) => {
-              const count = orders.filter((order) => item.status === "all" ? stages.some((stage) => stage.status === order.status) : order.status === item.status).length;
-              return <button key={item.status} type="button" aria-pressed={selectedStage === item.status} className={`btn btn-full flex justify-between gap-3 ${selectedStage === item.status ? "btn-primary" : "btn-secondary"}`} onClick={() => setSelectedStage(item.status)}>
-                <span className="flex-1 text-left">{item.title}</span><span className="tabular-nums shrink-0 text-right" aria-label={`${count} orders`}>{loaded ? count : "—"}</span>
-              </button>;
-            })}
-            <button type="button" aria-pressed={selectedStage === "map"} className={`btn btn-full ${selectedStage === "map" ? "btn-primary" : "btn-secondary"}`} onClick={() => setSelectedStage("map")}>Map</button>
-          </nav>
-          <div className="min-w-0">
+            )}
+            {selectedStage !== "manage" && (
+              <>
         <div className="flex items-center justify-between gap-3 mb-5">
-          <div role="status" aria-live="polite" className="flex-1 min-w-0">{notice && <p className={`message ${noticePaused ? "message-warning" : "message-success"}`}>{notice}</p>}</div>
           <button type="button" className="btn btn-secondary shrink-0" disabled={loading || refreshing || pending !== null || pendingRestaurant !== null} onClick={requestRefresh}>{refreshing ? "Refreshing…" : "Refresh orders"}</button>
         </div>
-        {error && <p role="alert" className="message message-error mb-5">{error}</p>}
         {loading && <p role="status" className="body-text mb-5">Loading your orders…</p>}
           {selectedStage === "map" && <MontrealMap />}
           {loaded && selectedStage !== "map" && <div className={selectedStage === "all" ? "grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-5 items-start" : "grid grid-cols-1 gap-5"}>
@@ -551,7 +567,17 @@ export default function RestaurantDashboard() {
                         </ul>
                         <div className="flex justify-between text-sm font-bold mb-4"><span>Total</span><span>{money(order.total)}</span></div>
                         {stage.next ? <button type="button" className="btn btn-primary btn-full" disabled={pending !== null || pendingRestaurant !== null || refreshing || isWaiting(order)} onClick={() => void advance(order, stage.next, stages[index + 1].title)} aria-label={`${isWaiting(order) ? "Waiting for earlier orders" : stage.action} for order ${order.id}`}>{pending === order.id ? "Updating…" : isWaiting(order) ? "Waiting in queue" : `${stage.action} →`}</button> : <p className="rounded-xl bg-[var(--color-sage-light)] text-[var(--color-forest)] py-3 text-center text-sm font-semibold">{order.status === "ready" ? "Awaiting courier pickup confirmation" : "✓ Picked up"}</p>}
-                        {order.status === "placed" && <button type="button" className="btn btn-secondary btn-full mt-2" disabled={pending !== null || pendingRestaurant !== null || refreshing || isWaiting(order)} onClick={() => void advance(order, "rejected", "Declined")} aria-label={`Decline order ${order.id}`}>Decline order</button>}
+                        {order.status === "placed" && (decliningOrderId === order.id ? (
+                          <form className="mt-3 space-y-2" onSubmit={(event) => { event.preventDefault(); void advance(order, "rejected", "Declined", rejectionReasons[order.id] ?? ""); }}>
+                            <label className="form-label" htmlFor={`rejection-reason-${order.id}`}>Reason for declining
+                              <textarea id={`rejection-reason-${order.id}`} className="form-input mt-1 min-h-20" required minLength={3} maxLength={500} value={rejectionReasons[order.id] ?? ""} onChange={(event) => setRejectionReasons((current) => ({ ...current, [order.id]: event.target.value }))} />
+                            </label>
+                            <div className="flex gap-2">
+                              <button type="submit" className="btn btn-secondary flex-1" disabled={pending !== null || pendingRestaurant !== null || refreshing || isWaiting(order) || !(rejectionReasons[order.id] ?? "").trim()}>{pending === order.id ? "Declining…" : "Confirm decline"}</button>
+                              <button type="button" className="btn btn-secondary" disabled={pending === order.id} onClick={() => setDecliningOrderId(null)}>Cancel</button>
+                            </div>
+                          </form>
+                        ) : <button type="button" className="btn btn-secondary btn-full mt-2" disabled={pending !== null || pendingRestaurant !== null || refreshing || isWaiting(order)} onClick={() => setDecliningOrderId(order.id)} aria-label={`Decline order ${order.id}`}>Decline order</button>)}
                       </article>
                     ))}
                   </div>
@@ -559,6 +585,8 @@ export default function RestaurantDashboard() {
               );
             })}
           </div>}
+              </>
+            )}
           </div>
         </div>
       </section>

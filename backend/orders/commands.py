@@ -176,10 +176,11 @@ class RestaurantOrderCommand(OrderCommand):
     def target_status(self):
         raise NotImplementedError
 
-    def __init__(self, actor, order_id, expected_status):
+    def __init__(self, actor, order_id, expected_status, rejection_reason=""):
         self.actor = actor
         self.order_id = order_id
         self.expected_status = expected_status
+        self.rejection_reason = rejection_reason.strip()
 
     def eligible_orders(self, order):
         return Order.objects.filter(
@@ -217,7 +218,14 @@ class RestaurantOrderCommand(OrderCommand):
         except ValueError as exc:
             raise ValidationError({"detail": str(exc)}) from exc
 
-        if not self.eligible_orders(order).update(status=order.status):
+        updates = {"status": order.status}
+        if order.status == Order.Status.REJECTED:
+            if not self.rejection_reason:
+                raise ValidationError({"rejection_reason": "Enter a reason for declining this order."})
+            order.rejection_reason = self.rejection_reason
+            updates["rejection_reason"] = self.rejection_reason
+
+        if not self.eligible_orders(order).update(**updates):
             raise self.conflict()
 
         order.refresh_from_db()

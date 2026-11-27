@@ -8,6 +8,7 @@ type Order = {
   id: number;
   restaurant_name: string;
   status: string;
+  rejection_reason: string;
   created_at: string;
   total: string;
   promo_code: string;
@@ -596,6 +597,12 @@ export default function CustomerOrders({
             >
               {new Date(order.created_at).toLocaleString("en-CA")}
             </time>
+
+            {order.status === "rejected" && (
+              <p className="message message-warning mt-3">
+                Restaurant&apos;s reason: {order.rejection_reason || "No reason was provided."}
+              </p>
+            )}
 
             <ul className="my-5 py-4 border-y border-[var(--color-border)] space-y-3">
               {order.lines.map((line) => (

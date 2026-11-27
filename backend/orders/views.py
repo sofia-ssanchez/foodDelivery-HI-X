@@ -78,6 +78,7 @@ class RestaurantOrderStatusView(generics.GenericAPIView):
             actor=request.user,
             order_id=pk,
             expected_status=serializer.validated_data["expected_status"],
+            rejection_reason=serializer.validated_data.get("rejection_reason", ""),
         )
 
         order = command.execute()

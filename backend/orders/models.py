@@ -116,6 +116,8 @@ class Order(models.Model) :
         default=Status.PLACED,
     )
 
+    rejection_reason = models.CharField(max_length=500, blank=True, default="")
+
     delivery_address = models.CharField(max_length=600, blank=True)
     delivery_unit = models.CharField(max_length=80, blank=True)
 
