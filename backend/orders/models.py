@@ -10,6 +10,7 @@ class Restaurant(models.Model) :
         CLOSED = 'closed', 'Closed'
 
     name = models.CharField(max_length=150)
+    address = models.CharField(max_length=300, blank=True, default="")
 
     status = models.CharField(
         max_length=10,

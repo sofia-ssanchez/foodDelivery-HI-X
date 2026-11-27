@@ -3,7 +3,7 @@ from .map_views import DashboardMapView
 from .dashboard_views import (
     CustomerOrderListView, OperatorOverviewView, RestaurantListView,
     RestaurantMenuItemView, RestaurantMenuView, RestaurantOrderBoardView,
-    RestaurantPauseActivityView,
+    RestaurantPauseActivityView, RestaurantAddressView,
 )
 from .views import (
     DemoResetView,
@@ -19,6 +19,7 @@ from .views import PlaceOrderView, RestaurantOrderStatusView, OperatorOrderHisto
 urlpatterns = [
     path("demo/reset/", DemoResetView.as_view(), name="demo-reset"),
     path("customer/address-lookup/", AddressLookupView.as_view(), name="checkout-address-lookup"),
+    path("restaurant/address-lookup/", AddressLookupView.as_view(), name="restaurant-address-lookup"),
     path("map/", DashboardMapView.as_view(), name="dashboard-map"),
     path("map/location/", MapLocationView.as_view(), name="map-location"),
     path(
@@ -26,6 +27,7 @@ urlpatterns = [
         RestaurantPauseActivityView.as_view(),
         name="restaurant-toggle-activity",
     ),
+    path("restaurants/<int:restaurant_id>/address/", RestaurantAddressView.as_view(), name="restaurant-address"),
     path("customer/orders/", CustomerOrderListView.as_view(), name="customer-orders"),
     path("customer/orders/<int:pk>/cancel/", CustomerCancelOrderView.as_view(), name="customer-cancel-order"),
     path("operator/orders/<int:pk>/cancel/", OperatorCancelOrderView.as_view(), name="operator-cancel-order"),

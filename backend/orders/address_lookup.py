@@ -12,6 +12,7 @@ from django.core.cache import cache
 from rest_framework.exceptions import APIException, ValidationError
 
 SALT = "orders.checkout-address"
+RESTAURANT_SALT = "orders.restaurant-address"
 
 
 class AddressLookupUnavailable(APIException):
@@ -58,6 +59,16 @@ def search_addresses(query):
         raise AddressLookupUnavailable() from None
     cache.set(key, results, timeout=86400)
     return results
+
+
+def read_restaurant_address(token):
+    try:
+        location = signing.loads(token, salt=RESTAURANT_SALT, max_age=3600)
+        if not location.get("address") or not location.get("latitude") or not location.get("longitude"):
+            raise ValueError()
+        return location
+    except (signing.BadSignature, KeyError, ValueError, TypeError):
+        raise ValidationError({"detail": "Find and select a verified restaurant address."}) from None
 
 
 def read_checkout_address(token, customer_id):

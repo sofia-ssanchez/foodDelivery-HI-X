@@ -40,7 +40,7 @@ def calculate_order_pricing(order):
     ])
 
 
-def calculate_line_pricing(lines, promo_code=""):
+def calculate_line_pricing(lines, promo_code="", restaurant_id=None):
     
     config = load_pricing_config()
 
@@ -63,7 +63,7 @@ def calculate_line_pricing(lines, promo_code=""):
     if subtotal < threshold:
         surcharge = money(config["small_order_surcharge"])
 
-    promo_code, discount = validate_promo_code(promo_code, subtotal)
+    promo_code, discount = validate_promo_code(promo_code, subtotal, restaurant_id=restaurant_id)
     discount = money(discount)
     total = money(subtotal + delivery_fee + service_fee + surcharge - discount)
 
@@ -138,7 +138,6 @@ def submit_refund_request(
 
     if order.status not in [
         Order.Status.DELIVERED,
-        Order.Status.REJECTED,
         Order.Status.CANCELLED,
         Order.Status.PARTIALLY_REFUNDED,
     ]:
@@ -390,7 +389,6 @@ def evaluate_refund_eligibility(refund_request):
     # Rule 1: The order must have reached a final state.
     allowed_statuses = [
         Order.Status.DELIVERED,
-        Order.Status.REJECTED,
         Order.Status.CANCELLED,
         Order.Status.PARTIALLY_REFUNDED,
     ]

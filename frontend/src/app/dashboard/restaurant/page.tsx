@@ -7,6 +7,7 @@ import MontrealMap from "@/components/montreal-map";
 type Restaurant = {
   id: number;
   name: string;
+  address: string;
   status: "open" | "paused" | "closed";
 };
 
@@ -29,6 +30,19 @@ type MenuItem = {
   status: "available" | "sold_out";
 };
 
+type Promotion = {
+  id: number;
+  restaurant_id: number;
+  code: string;
+  discount_type: "fixed" | "percentage";
+  discount: string;
+  minimum_order: string;
+  expires_at: string;
+  is_active: boolean;
+};
+
+type PromotionDraft = Omit<Promotion, "id" | "restaurant_id">;
+
 const stages = [
   { status: "placed", title: "Placed", action: "Accept order", next: "accepted", color: "#E7D5A5" },
   { status: "accepted", title: "Accepted", action: "Start preparing", next: "preparing", color: "#B9D987" },
@@ -37,14 +51,25 @@ const stages = [
   { status: "picked_up", title: "Picked up", action: "", next: "", color: "#777C65" },
 ];
 const money = (value: string | number) => new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD" }).format(Number(value));
+const localDateTime = (value: string) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+  return date.toISOString().slice(0, 16);
+};
 
 export default function RestaurantDashboard() {
   const [selectedStage, setSelectedStage] = useState("all");
   const [orders, setOrders] = useState<Order[]>([]);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [restaurantName, setRestaurantName] = useState("");
+  const [restaurantAddressQuery, setRestaurantAddressQuery] = useState("");
+  const [restaurantAddresses, setRestaurantAddresses] = useState<{ address: string; token: string }[]>([]);
+  const [restaurantAddressToken, setRestaurantAddressToken] = useState("");
   const [creatingRestaurant, setCreatingRestaurant] = useState(false);
   const [menuItems, setMenuItems] = useState<Record<number, MenuItem[]>>({});
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [promoDrafts, setPromoDrafts] = useState<Record<number, PromotionDraft>>({});
   const [newMenuDrafts, setNewMenuDrafts] = useState<Record<number, { name: string; price: string }>>({});
   const [pendingMenu, setPendingMenu] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
@@ -73,9 +98,13 @@ export default function RestaurantDashboard() {
           if (!response.ok) throw new Error(menuData.detail || `Could not load ${restaurant.name}'s menu.`);
           return [restaurant.id, Array.isArray(menuData) ? menuData : menuData.results ?? []] as const;
         }));
+        const promoResponse = await apiFetch("/api/promotions/");
+        const promoData = await promoResponse.json();
+        if (!promoResponse.ok) throw new Error(promoData.detail || "Could not load your promo codes.");
         setRestaurants(data.restaurants);
         setOrders(data.orders);
         setMenuItems(Object.fromEntries(menuEntries));
+        setPromotions(promoData);
         setLoaded(true);
         setError("");
       })
@@ -163,13 +192,16 @@ export default function RestaurantDashboard() {
       const response = await apiFetch("/api/restaurants/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: restaurantName.trim() }),
+        body: JSON.stringify({ name: restaurantName.trim(), address_token: restaurantAddressToken }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || data.name?.[0] || "Could not create your restaurant.");
       setRestaurants((current) => [...current, data]);
       setMenuItems((current) => ({ ...current, [data.id]: [] }));
       setRestaurantName("");
+      setRestaurantAddressQuery("");
+      setRestaurantAddressToken("");
+      setRestaurantAddresses([]);
       setNotice(`${data.name} created. Add your menu items below.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create your restaurant.");
@@ -177,6 +209,92 @@ export default function RestaurantDashboard() {
       busy.current = false;
       setCreatingRestaurant(false);
     }
+  }
+
+  async function findRestaurantAddress() {
+    setError("");
+    setRestaurantAddresses([]);
+    try {
+      const response = await apiFetch("/api/restaurant/address-lookup/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address: restaurantAddressQuery }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "Could not find that address.");
+      setRestaurantAddresses(data.results ?? []);
+      if (!data.results?.length) setError("No matching Montreal address found.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not find that address.");
+    }
+  }
+
+  async function setExistingRestaurantAddress(restaurant: Restaurant, addressToken: string) {
+    if (busy.current) return;
+    busy.current = true; setError(""); setNotice("");
+    try {
+      const response = await apiFetch(`/api/restaurants/${restaurant.id}/address/`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ address_token: addressToken }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "Could not save restaurant address.");
+      setRestaurants((current) => current.map((item) => item.id === data.id ? data : item));
+      setRestaurantAddresses([]);
+      setRestaurantAddressQuery("");
+      setNotice(`${data.name}'s address saved and locked.`);
+    } catch (err) { setError(err instanceof Error ? err.message : "Could not save restaurant address."); }
+    finally { busy.current = false; }
+  }
+
+  function updatePromoDraft(restaurantId: number, changes: Partial<PromotionDraft>) {
+    setPromoDrafts((current) => {
+      const existing = current[restaurantId] ?? { code: "", discount_type: "fixed", discount: "", minimum_order: "0", expires_at: "", is_active: true };
+      return { ...current, [restaurantId]: { ...existing, ...changes } };
+    });
+  }
+
+  async function saveNewPromo(restaurantId: number, event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const draft = promoDrafts[restaurantId];
+    if (!draft || busy.current) return;
+    busy.current = true;
+    setError(""); setNotice("");
+    try {
+      const response = await apiFetch("/api/promotions/", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ restaurant_id: restaurantId, ...draft, expires_at: new Date(draft.expires_at).toISOString() }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || data.code?.[0] || data.discount?.[0] || data.expires_at?.[0] || "Could not create promo code.");
+      setPromotions((current) => [...current, data]);
+      setPromoDrafts((current) => ({ ...current, [restaurantId]: { code: "", discount_type: "fixed", discount: "", minimum_order: "0", expires_at: "", is_active: true } }));
+      setNotice(`${data.code} created.`);
+    } catch (err) { setError(err instanceof Error ? err.message : "Could not create promo code."); }
+    finally { busy.current = false; }
+  }
+
+  function updatePromotion(id: number, changes: Partial<Promotion>) {
+    setPromotions((current) => current.map((promotion) => promotion.id === id ? { ...promotion, ...changes } : promotion));
+  }
+
+  async function savePromotion(promotion: Promotion) {
+    if (busy.current) return;
+    busy.current = true; setError(""); setNotice("");
+    try {
+      const response = await apiFetch(`/api/promotions/${promotion.id}/`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: promotion.code, discount_type: promotion.discount_type, discount: promotion.discount, minimum_order: promotion.minimum_order, expires_at: new Date(promotion.expires_at).toISOString(), is_active: promotion.is_active }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || data.code?.[0] || data.discount?.[0] || data.expires_at?.[0] || "Could not update promo code.");
+      setPromotions((current) => current.map((item) => item.id === data.id ? data : item));
+      setNotice(`${data.code} updated.`);
+    } catch (err) { setError(err instanceof Error ? err.message : "Could not update promo code."); }
+    finally { busy.current = false; }
+  }
+
+  async function deletePromotion(promotion: Promotion) {
+    if (busy.current) return;
+    busy.current = true; setError(""); setNotice("");
+    try {
+      const response = await apiFetch(`/api/promotions/${promotion.id}/`, { method: "DELETE" });
+      if (!response.ok) { const data = await response.json(); throw new Error(data.detail || "Could not delete promo code."); }
+      setPromotions((current) => current.filter((item) => item.id !== promotion.id));
+      setNotice(`${promotion.code} deleted.`);
+    } catch (err) { setError(err instanceof Error ? err.message : "Could not delete promo code."); }
+    finally { busy.current = false; }
   }
 
   function updateMenuDraft(restaurantId: number, changes: Partial<{ name: string; price: string }>) {
@@ -278,7 +396,7 @@ export default function RestaurantDashboard() {
           <div className="mt-4 flex flex-wrap gap-3">
             {restaurants.map((restaurant) => (
               <div key={restaurant.id} className="flex flex-wrap items-center gap-3">
-                <span>{restaurant.name} · {restaurant.status}</span>
+                <span>{restaurant.name} · {restaurant.address || "Address unavailable"} · {restaurant.status}</span>
                 <button
                   type="button"
                   className="btn btn-secondary"
@@ -299,16 +417,29 @@ export default function RestaurantDashboard() {
           <p className="form-help mt-1 mb-5">Add items, update prices, and mark items available or sold out.</p>
           {loaded && !restaurants.length && (
             <form className="mb-5 flex flex-wrap items-end gap-3" onSubmit={(event) => void createRestaurant(event)}>
+              <p className="form-label w-full">Restaurant name and address · locked after linking</p>
               <label className="form-label min-w-64 flex-1">Restaurant name
                 <input className="form-input mt-1" required maxLength={150} value={restaurantName} onChange={(event) => setRestaurantName(event.target.value)} />
               </label>
-              <button className="btn btn-primary" type="submit" disabled={creatingRestaurant}>{creatingRestaurant ? "Creating…" : "Create restaurant"}</button>
+              <label className="form-label min-w-64 flex-1">Restaurant address
+                <input className="form-input mt-1" required maxLength={250} placeholder="Search a Montreal street address" value={restaurantAddressQuery} onChange={(event) => { setRestaurantAddressQuery(event.target.value); setRestaurantAddressToken(""); setRestaurantAddresses([]); }} />
+              </label>
+              <button className="btn btn-secondary" type="button" disabled={restaurantAddressQuery.trim().length < 5} onClick={() => void findRestaurantAddress()}>Find address</button>
+              <button className="btn btn-primary" type="submit" disabled={creatingRestaurant || !restaurantAddressToken}>{creatingRestaurant ? "Creating…" : "Create restaurant"}</button>
+              {restaurantAddresses.length > 0 && <ul className="w-full space-y-2">{restaurantAddresses.map((result) => <li key={result.address}><button className="btn btn-secondary" type="button" onClick={() => { setRestaurantAddressQuery(result.address); setRestaurantAddressToken(result.token); setRestaurantAddresses([]); }}>{result.address}</button></li>)}</ul>}
             </form>
           )}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
             {restaurants.map((restaurant) => (
               <article key={restaurant.id} className="rounded-2xl border border-[var(--color-border)] p-4">
                 <h3 className="font-bold text-[var(--color-forest)]">{restaurant.name}</h3>
+                {!restaurant.address && <div className="mt-3 rounded-xl border border-dashed border-[var(--color-border)] p-3">
+                  <label className="form-label">Set restaurant address once
+                    <input className="form-input mt-1" maxLength={250} placeholder="Search a Montreal street address" value={restaurantAddressQuery} onChange={(event) => { setRestaurantAddressQuery(event.target.value); setRestaurantAddresses([]); }} />
+                  </label>
+                  <button className="btn btn-secondary mt-2" type="button" disabled={restaurantAddressQuery.trim().length < 5} onClick={() => void findRestaurantAddress()}>Find address</button>
+                  {restaurantAddresses.length > 0 && <ul className="mt-2 space-y-2">{restaurantAddresses.map((result) => <li key={result.address}><button className="btn btn-secondary btn-full text-left" type="button" onClick={() => void setExistingRestaurantAddress(restaurant, result.token)}>{result.address}</button></li>)}</ul>}
+                </div>}
                 <form className="mt-4 grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_130px_auto] gap-2 items-end" onSubmit={(event) => void addMenuItem(restaurant, event)}>
                   <label className="form-label">New item
                     <input className="form-input mt-1" required maxLength={150} value={newMenuDrafts[restaurant.id]?.name ?? ""} onChange={(event) => updateMenuDraft(restaurant.id, { name: event.target.value })} />
@@ -338,6 +469,41 @@ export default function RestaurantDashboard() {
                   ))}
                   {loaded && !(menuItems[restaurant.id] ?? []).length && <li className="form-help">No menu items yet.</li>}
                 </ul>
+                <section className="mt-6 border-t border-[var(--color-border)] pt-5" aria-label={`${restaurant.name} promo codes`}>
+                  <h4 className="font-bold text-[var(--color-forest)]">Promo codes</h4>
+                  <form className="mt-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2 items-end" onSubmit={(event) => void saveNewPromo(restaurant.id, event)}>
+                    <label className="form-label">Code
+                      <input className="form-input mt-1" required maxLength={40} value={promoDrafts[restaurant.id]?.code ?? ""} onChange={(event) => updatePromoDraft(restaurant.id, { code: event.target.value.toUpperCase() })} />
+                    </label>
+                    <label className="form-label">Discount type
+                      <select className="form-input mt-1" value={promoDrafts[restaurant.id]?.discount_type ?? "fixed"} onChange={(event) => updatePromoDraft(restaurant.id, { discount_type: event.target.value as PromotionDraft["discount_type"] })}><option value="fixed">Amount (CAD)</option><option value="percentage">Percent</option></select>
+                    </label>
+                    <label className="form-label">Discount
+                      <input className="form-input mt-1" required type="number" min="0.01" step="0.01" max={promoDrafts[restaurant.id]?.discount_type === "percentage" ? "100" : undefined} value={promoDrafts[restaurant.id]?.discount ?? ""} onChange={(event) => updatePromoDraft(restaurant.id, { discount: event.target.value })} />
+                    </label>
+                    <label className="form-label">Minimum order (CAD)
+                      <input className="form-input mt-1" required type="number" min="0" step="0.01" value={promoDrafts[restaurant.id]?.minimum_order ?? "0"} onChange={(event) => updatePromoDraft(restaurant.id, { minimum_order: event.target.value })} />
+                    </label>
+                    <label className="form-label">Expiry date and time
+                      <input className="form-input mt-1" required type="datetime-local" value={promoDrafts[restaurant.id]?.expires_at ?? ""} onChange={(event) => updatePromoDraft(restaurant.id, { expires_at: event.target.value })} />
+                    </label>
+                    <button className="btn btn-primary" type="submit">Create promo</button>
+                  </form>
+                  <ul className="mt-4 space-y-3">
+                    {promotions.filter((promotion) => promotion.restaurant_id === restaurant.id).map((promotion) => (
+                      <li key={promotion.id} className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-7 gap-2 items-end rounded-xl bg-[var(--color-sage-light)]/40 p-3">
+                        <label className="form-label">Code<input className="form-input mt-1" required maxLength={40} value={promotion.code} onChange={(event) => updatePromotion(promotion.id, { code: event.target.value.toUpperCase() })} /></label>
+                        <label className="form-label">Type<select className="form-input mt-1" value={promotion.discount_type} onChange={(event) => updatePromotion(promotion.id, { discount_type: event.target.value as Promotion["discount_type"] })}><option value="fixed">Amount</option><option value="percentage">Percent</option></select></label>
+                        <label className="form-label">Discount<input className="form-input mt-1" required type="number" min="0.01" step="0.01" max={promotion.discount_type === "percentage" ? "100" : undefined} value={promotion.discount} onChange={(event) => updatePromotion(promotion.id, { discount: event.target.value })} /></label>
+                        <label className="form-label">Minimum (CAD)<input className="form-input mt-1" required type="number" min="0" step="0.01" value={promotion.minimum_order} onChange={(event) => updatePromotion(promotion.id, { minimum_order: event.target.value })} /></label>
+                        <label className="form-label">Expires<input className="form-input mt-1" required type="datetime-local" value={localDateTime(promotion.expires_at)} onChange={(event) => updatePromotion(promotion.id, { expires_at: event.target.value })} /></label>
+                        <label className="form-label flex items-center gap-2"><input type="checkbox" checked={promotion.is_active} onChange={(event) => updatePromotion(promotion.id, { is_active: event.target.checked })} />Active</label>
+                        <div className="flex gap-2"><button className="btn btn-secondary" type="button" onClick={() => void savePromotion(promotion)}>Save</button><button className="btn btn-secondary" type="button" onClick={() => void deletePromotion(promotion)}>Delete</button></div>
+                      </li>
+                    ))}
+                    {!promotions.some((promotion) => promotion.restaurant_id === restaurant.id) && <li className="form-help">No promo codes.</li>}
+                  </ul>
+                </section>
               </article>
             ))}
           </div>

@@ -37,7 +37,7 @@ class PlaceOrderCommand(OrderCommand):
         location = read_checkout_address(self.delivery_address_token, self.customer.pk)
         restaurant = get_restaurant(self.restaurant_id)
         order_lines = prepare_checkout_lines(restaurant, self.items)
-        pricing = calculate_line_pricing(order_lines, self.promo_code)
+        pricing = calculate_line_pricing(order_lines, self.promo_code, restaurant_id=restaurant.pk)
         order = self._create_order(restaurant, location)
         order.payment_details = {key: str(value) for key, value in pricing.items()}
         order.save(update_fields=["payment_details"])

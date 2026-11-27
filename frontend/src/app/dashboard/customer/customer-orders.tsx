@@ -54,7 +54,6 @@ const pastStatuses = new Set([
 
 const refundEligibleStatuses = new Set([
   "delivered",
-  "rejected",
   "cancelled",
   "partially_refunded",
 ]);

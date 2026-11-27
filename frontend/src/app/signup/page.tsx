@@ -11,12 +11,41 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("customer");
   const [restaurantName, setRestaurantName] = useState("");
+  const [restaurantAddressQuery, setRestaurantAddressQuery] = useState("");
+  const [restaurantAddresses, setRestaurantAddresses] = useState<{ address: string; token: string }[]>([]);
+  const [restaurantAddressToken, setRestaurantAddressToken] = useState("");
   const [message, setMessage] = useState("");
   const [isError, setIsError] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  const findRestaurantAddress = async () => {
+    setMessage("");
+    setIsError(false);
+    setRestaurantAddresses([]);
+    try {
+      const response = await demoFetch(`${API_BASE}/api/restaurant/address-lookup/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address: restaurantAddressQuery }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "Could not find that address.");
+      setRestaurantAddresses(data.results ?? []);
+      if (!data.results?.length) setMessage("No matching Montreal address found.");
+    } catch (error) {
+      setIsError(true);
+      setMessage(error instanceof Error ? error.message : "Could not find that address.");
+    }
+  };
+
   const handleSubmit: NonNullable<ComponentProps<"form">["onSubmit"]> = async (event) => {
     event.preventDefault();
+
+    if (role === "restaurant" && !restaurantAddressToken) {
+      setIsError(true);
+      setMessage("Find and select your restaurant address.");
+      return;
+    }
 
     setMessage("");
     setIsError(false);
@@ -35,7 +64,7 @@ export default function SignupPage() {
             email,
             password,
             role,
-            ...(role === "restaurant" ? { restaurant_name: restaurantName } : {}),
+            ...(role === "restaurant" ? { restaurant_name: restaurantName, restaurant_address_token: restaurantAddressToken } : {}),
           }),
         }
       );
@@ -66,6 +95,9 @@ export default function SignupPage() {
       setEmail("");
       setPassword("");
       setRestaurantName("");
+      setRestaurantAddressQuery("");
+      setRestaurantAddressToken("");
+      setRestaurantAddresses([]);
       setRole("customer");
     } catch (error) {
       setIsError(true);
@@ -179,23 +211,17 @@ export default function SignupPage() {
             </div>
 
             {role === "restaurant" && (
-              <div className="form-field">
-                <label className="form-label" htmlFor="restaurant-name">
-                  Restaurant name
-                </label>
-                <input
-                  className="form-input"
-                  id="restaurant-name"
-                  name="restaurant_name"
-                  type="text"
-                  autoComplete="organization"
-                  maxLength={150}
-                  placeholder="Enter your restaurant name"
-                  value={restaurantName}
-                  onChange={(event) => setRestaurantName(event.target.value)}
-                  required
-                />
-              </div>
+              <fieldset className="form-field rounded-xl border border-[var(--color-border)] p-4">
+                <legend className="form-label px-1">Restaurant details · locked after linking</legend>
+                <label className="form-label" htmlFor="restaurant-name">Restaurant name</label>
+                <input className="form-input" id="restaurant-name" name="restaurant_name" type="text" autoComplete="organization" maxLength={150} placeholder="Enter your restaurant name" value={restaurantName} onChange={(event) => setRestaurantName(event.target.value)} required />
+                <label className="form-label mt-3 block" htmlFor="restaurant-address">Restaurant address</label>
+                <div className="flex gap-2">
+                  <input className="form-input" id="restaurant-address" type="text" maxLength={250} placeholder="Search a Montreal street address" value={restaurantAddressQuery} onChange={(event) => { setRestaurantAddressQuery(event.target.value); setRestaurantAddressToken(""); setRestaurantAddresses([]); }} required />
+                  <button className="btn btn-secondary shrink-0" type="button" onClick={() => void findRestaurantAddress()} disabled={restaurantAddressQuery.trim().length < 5}>Find address</button>
+                </div>
+                {restaurantAddresses.length > 0 && <ul className="mt-2 space-y-2">{restaurantAddresses.map((result) => <li key={result.address}><button className="btn btn-secondary btn-full text-left" type="button" onClick={() => { setRestaurantAddressQuery(result.address); setRestaurantAddressToken(result.token); setRestaurantAddresses([]); }}>{result.address}</button></li>)}</ul>}
+              </fieldset>
             )}
 
             {message && (

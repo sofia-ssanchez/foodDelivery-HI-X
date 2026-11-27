@@ -332,5 +332,5 @@ class CheckoutQuoteView(APIView):
         data = serializer.validated_data
         restaurant = get_restaurant(data["restaurant_id"])
         lines = prepare_checkout_lines(restaurant, data["items"])
-        pricing = calculate_line_pricing(lines, data["promo_code"])
+        pricing = calculate_line_pricing(lines, data["promo_code"], restaurant_id=restaurant.pk)
         return Response({key: str(value) for key, value in pricing.items()})

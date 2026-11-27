@@ -11,6 +11,7 @@ class RestaurantSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "name",
+            "address",
             "status",
             "latitude",
             "longitude",
@@ -20,6 +21,7 @@ class RestaurantSerializer(serializers.ModelSerializer):
 
 class RestaurantCreateSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=150)
+    address_token = serializers.CharField(max_length=3000)
 
 class MenuItemSerializer(serializers.ModelSerializer):
     class Meta:

@@ -1,7 +1,9 @@
 """Read-only data views for the customer, restaurant, and operator dashboards."""
 
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.db.models import Count
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.response import Response
@@ -9,6 +11,7 @@ from rest_framework.views import APIView
 
 from guards.permissions import RequireAuth, RequireCustomer, RequireOperator, RequireRestaurantUser
 from .commands import CreateMenuItemCommand, UpdateMenuItemCommand
+from .address_lookup import read_restaurant_address
 from .models import MenuItem, Order, Restaurant
 from .serializers import (
     CustomerOrderSerializer,
@@ -50,11 +53,13 @@ class RestaurantListView(generics.ListCreateAPIView):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        location = read_restaurant_address(serializer.validated_data["address_token"])
         restaurant = Restaurant.objects.create(
             name=serializer.validated_data["name"],
+            address=location["address"],
             owner=request.user,
-            latitude="45.501700",
-            longitude="-73.567300",
+            latitude=location["latitude"],
+            longitude=location["longitude"],
         )
         return Response(
             RestaurantSerializer(restaurant).data,
@@ -141,6 +146,24 @@ class RestaurantPauseActivityView(generics.GenericAPIView):
 
         restaurant.save(update_fields=["status"])
         return Response(self.get_serializer(restaurant).data)
+
+
+class RestaurantAddressView(APIView):
+    permission_classes = [RequireRestaurantUser]
+
+    @transaction.atomic
+    def post(self, request, restaurant_id):
+        restaurant = get_object_or_404(Restaurant.objects.select_for_update(), pk=restaurant_id, owner=request.user)
+        if restaurant.address:
+            return Response({"detail": "Restaurant address is locked once set."}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = RestaurantCreateSerializer(data={"name": restaurant.name, "address_token": request.data.get("address_token", "")})
+        serializer.is_valid(raise_exception=True)
+        location = read_restaurant_address(serializer.validated_data["address_token"])
+        restaurant.address = location["address"]
+        restaurant.latitude = location["latitude"]
+        restaurant.longitude = location["longitude"]
+        restaurant.save(update_fields=["address", "latitude", "longitude"])
+        return Response(RestaurantSerializer(restaurant).data)
 
 
 class RestaurantOrderBoardView(generics.GenericAPIView):

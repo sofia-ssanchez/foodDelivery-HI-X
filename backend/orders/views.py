@@ -6,10 +6,11 @@ from django.shortcuts import get_object_or_404
 from rest_framework import generics, serializers, status
 from rest_framework.views import APIView
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from delivery.models import Courier
 from guards.permissions import RequireAuth, RequireCustomer, RequireOperator, RequireRestaurantUser
-from .address_lookup import SALT, search_addresses
+from .address_lookup import RESTAURANT_SALT, SALT, search_addresses
 from .commands import (
     CustomerCancelOrderCommand,
     OperatorCancelOrderCommand,
@@ -185,17 +186,33 @@ class OperatorCancelOrderView(generics.GenericAPIView):
 
 
 class AddressLookupView(APIView):
-    permission_classes = [RequireCustomer]
+    permission_classes = [AllowAny]
+
+    def get_permissions(self):
+        user = self.request.user
+        if not user.is_authenticated:
+            return [AllowAny()]
+        if user.role == "customer":
+            return [RequireCustomer()]
+        if user.role == "restaurant":
+            return [RequireRestaurantUser()]
+        return [RequireRestaurantUser()]
 
     def post(self, request):
         serializer = AddressQuerySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         results = search_addresses(serializer.validated_data["address"])
-        response = Response({"results": [
-            {"address": result["address"], "token": signing.dumps(
-                {**result, "customer_id": request.user.id}, salt=SALT
-            )} for result in results
-        ]})
+        if not request.user.is_authenticated or request.user.role == "restaurant":
+            response = Response({"results": [{
+                **result,
+                "token": signing.dumps(result, salt=RESTAURANT_SALT),
+            } for result in results]})
+        else:
+            response = Response({"results": [
+                {"address": result["address"], "token": signing.dumps(
+                    {**result, "customer_id": request.user.id}, salt=SALT
+                )} for result in results
+            ]})
         response["Cache-Control"] = "no-store"
         return response
 
