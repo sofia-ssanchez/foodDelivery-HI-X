@@ -8,6 +8,7 @@ type Restaurant = {
   id: number;
   name: string;
   address: string;
+  details_locked: boolean;
   status: "open" | "paused" | "closed";
 };
 
@@ -64,6 +65,7 @@ export default function RestaurantDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [restaurantName, setRestaurantName] = useState("");
+  const [restaurantNameDrafts, setRestaurantNameDrafts] = useState<Record<number, string>>({});
   const [restaurantAddressQuery, setRestaurantAddressQuery] = useState("");
   const [restaurantAddresses, setRestaurantAddresses] = useState<{ address: string; token: string }[]>([]);
   const [restaurantAddressToken, setRestaurantAddressToken] = useState("");
@@ -106,6 +108,11 @@ export default function RestaurantDashboard() {
         const promoData = await promoResponse.json();
         if (!promoResponse.ok) throw new Error(promoData.detail || "Could not load your promo codes.");
         setRestaurants(data.restaurants);
+        setRestaurantNameDrafts((current) => {
+          const next = { ...current };
+          data.restaurants.forEach((restaurant: Restaurant) => { if (next[restaurant.id] === undefined) next[restaurant.id] = restaurant.name; });
+          return next;
+        });
         setOrders(data.orders);
         setMenuItems(Object.fromEntries(menuEntries));
         setPromotions(promoData);
@@ -236,14 +243,15 @@ export default function RestaurantDashboard() {
     }
   }
 
-  async function setExistingRestaurantAddress(restaurant: Restaurant, addressToken: string) {
+  async function saveRestaurantDetails(restaurant: Restaurant, addressToken: string) {
     if (busy.current) return;
     busy.current = true; setPendingRestaurant(restaurant.id); setError(""); setNotice("");
     try {
-      const response = await apiFetch(`/api/restaurants/${restaurant.id}/address/`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ address_token: addressToken }) });
+      const response = await apiFetch(`/api/restaurants/${restaurant.id}/address/`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: (restaurantNameDrafts[restaurant.id] ?? restaurant.name).trim(), address_token: addressToken }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || "Could not save restaurant address.");
       setRestaurants((current) => current.map((item) => item.id === data.id ? data : item));
+      setRestaurantNameDrafts((current) => ({ ...current, [data.id]: data.name }));
       setRestaurantAddresses([]);
       setRestaurantAddressQuery("");
       setRestaurantAddressToken("");
@@ -424,6 +432,13 @@ export default function RestaurantDashboard() {
 
         <div className="grid grid-cols-1 md:grid-cols-[200px_minmax(0,1fr)] gap-6 items-start">
           <nav aria-label="Restaurant order views" className="rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 flex flex-col gap-3 md:sticky md:top-5">
+            <p className="eyebrow px-2 mb-2">Manage restaurant</p>
+            {[
+              ["manage-details", "Restaurant details"],
+              ["manage-promos", "Promo codes"],
+              ["manage-menu", "Menu"],
+            ].map(([view, label]) => <button key={view} type="button" aria-pressed={selectedStage === view} className={`btn btn-full ${selectedStage === view ? "btn-primary" : "btn-secondary"}`} onClick={() => setSelectedStage(view)}>{label}</button>)}
+            <div className="my-2 border-t border-[var(--color-border)]" />
             <p className="eyebrow px-2 mb-2">Orders</p>
             {[{ status: "all", title: "All orders" }, ...stages].map((item) => {
               const count = orders.filter((order) => item.status === "all" ? stages.some((stage) => stage.status === order.status) : order.status === item.status).length;
@@ -432,17 +447,14 @@ export default function RestaurantDashboard() {
               </button>;
             })}
             <button type="button" aria-pressed={selectedStage === "map"} className={`btn btn-full ${selectedStage === "map" ? "btn-primary" : "btn-secondary"}`} onClick={() => setSelectedStage("map")}>Map</button>
-            <div className="my-2 border-t border-[var(--color-border)]" />
-            <button type="button" aria-pressed={selectedStage === "manage"} className={`btn btn-full ${selectedStage === "manage" ? "btn-primary" : "btn-secondary"}`} onClick={() => setSelectedStage("manage")}>Manage restaurant</button>
           </nav>
           <div className="min-w-0">
             <div role="status" aria-live="polite" className="mb-3">{notice && <p className={`message ${noticePaused ? "message-warning" : "message-success"}`}>{notice}</p>}</div>
             {error && <p role="alert" className="message message-error mb-5">{error}</p>}
-            {selectedStage === "manage" && (
+            {selectedStage.startsWith("manage-") && (
         <section id="menu-management" className="mb-8 rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)]/80 p-5" aria-labelledby="menu-management-heading">
-          <h2 id="menu-management-heading" className="text-xl font-bold text-[var(--color-forest)]">Manage restaurant</h2>
-          <p className="form-help mt-1 mb-5">Add items, update prices, and mark items available or sold out.</p>
-          {loaded && !restaurants.length && (
+          <h2 id="menu-management-heading" className="text-xl font-bold text-[var(--color-forest)]">{selectedStage === "manage-details" ? "Restaurant details" : selectedStage === "manage-promos" ? "Promo codes" : "Menu"}</h2>
+          {selectedStage === "manage-details" && loaded && !restaurants.length && (
             <form className="mb-5 flex flex-wrap items-end gap-3" onSubmit={(event) => void createRestaurant(event)}>
               <p className="form-label w-full">Restaurant name and address · locked after linking</p>
               <label className="form-label min-w-64 flex-1">Restaurant name
@@ -456,18 +468,31 @@ export default function RestaurantDashboard() {
               {restaurantAddresses.length > 0 && <ul className="w-full space-y-2">{restaurantAddresses.map((result) => <li key={result.address}><button className="btn btn-secondary" type="button" onClick={() => { setRestaurantAddressQuery(result.address); setRestaurantAddressToken(result.token); setRestaurantAddresses([]); }}>{result.address}</button></li>)}</ul>}
             </form>
           )}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 gap-5">
             {restaurants.map((restaurant) => (
               <article key={restaurant.id} className="rounded-2xl border border-[var(--color-border)] p-4">
                 <h3 className="font-bold text-[var(--color-forest)]">{restaurant.name}</h3>
-                {!restaurant.address && <div className="mt-3 rounded-xl border border-dashed border-[var(--color-border)] p-3">
-                  <label className="form-label">Set restaurant address once
-                    <input className="form-input mt-1" maxLength={250} placeholder="Search a Montreal street address" value={restaurantAddressQuery} onChange={(event) => { setRestaurantAddressQuery(event.target.value); setRestaurantAddressToken(""); setAddressTargetId(null); setRestaurantAddresses([]); }} />
-                  </label>
-                  <button className="btn btn-secondary mt-2" type="button" disabled={restaurantAddressQuery.trim().length < 5} onClick={() => void findRestaurantAddress()}>Find address</button>
-                  {restaurantAddresses.length > 0 && <ul className="mt-2 space-y-2">{restaurantAddresses.map((result) => <li key={result.address}><button className={`btn btn-full text-left ${addressTargetId === restaurant.id && restaurantAddressToken === result.token ? "btn-primary" : "btn-secondary"}`} type="button" onClick={() => { setRestaurantAddressToken(result.token); setAddressTargetId(restaurant.id); }}>{result.address}</button></li>)}</ul>}
-                  {addressTargetId === restaurant.id && restaurantAddressToken && <button className="btn btn-primary mt-2" type="button" disabled={pendingRestaurant === restaurant.id} onClick={() => void setExistingRestaurantAddress(restaurant, restaurantAddressToken)}>{pendingRestaurant === restaurant.id ? "Setting address…" : "Set address"}</button>}
-                </div>}
+                {selectedStage === "manage-details" && (restaurant.details_locked ? (
+                  <div className="mt-4 rounded-2xl bg-[var(--color-sage-light)]/40 p-4">
+                    <p><strong>{restaurant.name}</strong></p>
+                    <p className="mt-1">{restaurant.address || "Address not set"}</p>
+                    <span className="mt-3 inline-flex rounded-full bg-[var(--color-surface)] px-3 py-1 text-xs font-semibold text-[var(--color-forest)]">Details locked</span>
+                  </div>
+                ) : (
+                  <div className="mt-4 space-y-3 rounded-2xl border border-[var(--color-border)] p-4">
+                    <label className="form-label">Restaurant name
+                      <input className="form-input mt-1" required maxLength={150} value={restaurantNameDrafts[restaurant.id] ?? restaurant.name} onChange={(event) => setRestaurantNameDrafts((current) => ({ ...current, [restaurant.id]: event.target.value }))} />
+                    </label>
+                    <label className="form-label block">Restaurant address
+                      <input className="form-input mt-1" maxLength={250} placeholder="Search a Montreal street address" value={addressTargetId === restaurant.id ? restaurantAddressQuery : ""} onChange={(event) => { setRestaurantAddressQuery(event.target.value); setRestaurantAddressToken(""); setAddressTargetId(restaurant.id); setRestaurantAddresses([]); }} />
+                    </label>
+                    <button className="btn btn-secondary" type="button" disabled={addressTargetId !== restaurant.id || restaurantAddressQuery.trim().length < 5} onClick={() => void findRestaurantAddress()}>Find address</button>
+                    {addressTargetId === restaurant.id && restaurantAddresses.length > 0 && <ul className="space-y-2">{restaurantAddresses.map((result) => <li key={result.address}><button className={`btn btn-full text-left ${restaurantAddressToken === result.token ? "btn-primary" : "btn-secondary"}`} type="button" onClick={() => { setRestaurantAddressToken(result.token); setAddressTargetId(restaurant.id); }}>{result.address}</button></li>)}</ul>}
+                    {addressTargetId === restaurant.id && restaurantAddressToken && <button className="btn btn-primary" type="button" disabled={pendingRestaurant === restaurant.id || !(restaurantNameDrafts[restaurant.id] ?? restaurant.name).trim()} onClick={() => void saveRestaurantDetails(restaurant, restaurantAddressToken)}>{pendingRestaurant === restaurant.id ? "Saving…" : "Set address"}</button>}
+                    {restaurant.address && <p className="form-help">Current address: {restaurant.address}</p>}
+                  </div>
+                ))}
+                {selectedStage === "manage-menu" && <>
                 <form className="mt-4 grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_130px_auto] gap-2 items-end" onSubmit={(event) => void addMenuItem(restaurant, event)}>
                   <label className="form-label">New item
                     <input className="form-input mt-1" required maxLength={150} value={newMenuDrafts[restaurant.id]?.name ?? ""} onChange={(event) => updateMenuDraft(restaurant.id, { name: event.target.value })} />
@@ -497,7 +522,8 @@ export default function RestaurantDashboard() {
                   ))}
                   {loaded && !(menuItems[restaurant.id] ?? []).length && <li className="form-help">No menu items yet.</li>}
                 </ul>
-                <section className="mt-6 border-t border-[var(--color-border)] pt-5" aria-label={`${restaurant.name} promo codes`}>
+                </>}
+                {selectedStage === "manage-promos" && <section className="mt-2" aria-label={`${restaurant.name} promo codes`}>
                   <h4 className="font-bold text-[var(--color-forest)]">Promo codes</h4>
                   <form className="mt-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2 items-end" onSubmit={(event) => void saveNewPromo(restaurant.id, event)}>
                     <label className="form-label">Code
@@ -519,25 +545,33 @@ export default function RestaurantDashboard() {
                   </form>
                   <ul className="mt-4 space-y-3">
                     {promotions.filter((promotion) => promotion.restaurant_id === restaurant.id).map((promotion) => (
-                      <li key={promotion.id} className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-7 gap-2 items-end rounded-xl bg-[var(--color-sage-light)]/40 p-3">
+                      <li key={promotion.id} className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 gap-3 items-end rounded-xl bg-[var(--color-sage-light)]/40 p-4">
                         <label className="form-label">Code<input className="form-input mt-1" required maxLength={40} value={promotion.code} onChange={(event) => updatePromotion(promotion.id, { code: event.target.value.toUpperCase() })} /></label>
                         <label className="form-label">Type<select className="form-input mt-1" value={promotion.discount_type} onChange={(event) => updatePromotion(promotion.id, { discount_type: event.target.value as Promotion["discount_type"] })}><option value="fixed">Amount</option><option value="percentage">Percent</option></select></label>
                         <label className="form-label">Discount<input className="form-input mt-1" required type="number" min="0.01" step="0.01" max={promotion.discount_type === "percentage" ? "100" : undefined} value={promotion.discount} onChange={(event) => updatePromotion(promotion.id, { discount: event.target.value })} /></label>
                         <label className="form-label">Minimum (CAD)<input className="form-input mt-1" required type="number" min="0" step="0.01" value={promotion.minimum_order} onChange={(event) => updatePromotion(promotion.id, { minimum_order: event.target.value })} /></label>
                         <label className="form-label">Expires<input className="form-input mt-1" required type="datetime-local" value={localDateTime(promotion.expires_at)} onChange={(event) => updatePromotion(promotion.id, { expires_at: event.target.value })} /></label>
-                        <label className="form-label flex items-center gap-2"><input type="checkbox" checked={promotion.is_active} onChange={(event) => updatePromotion(promotion.id, { is_active: event.target.checked })} />Active</label>
+                        <div className="flex flex-col gap-2">
+                          <span className="form-label">Availability</span>
+                          <div className="flex items-center gap-2">
+                            <button type="button" role="switch" aria-checked={promotion.is_active} aria-label={`${promotion.code} ${promotion.is_active ? "active" : "inactive"}`} onClick={() => updatePromotion(promotion.id, { is_active: !promotion.is_active })} className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${promotion.is_active ? "bg-[var(--color-forest)]" : "bg-slate-300"}`}>
+                              <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${promotion.is_active ? "translate-x-6" : "translate-x-1"}`} />
+                            </button>
+                            <span className={`text-sm font-semibold ${promotion.is_active ? "text-[var(--color-forest)]" : "text-slate-500"}`}>{promotion.is_active ? "Active" : "Inactive"}</span>
+                          </div>
+                        </div>
                         <div className="flex gap-2"><button className="btn btn-secondary" type="button" onClick={() => void savePromotion(promotion)}>Save</button><button className="btn btn-secondary" type="button" onClick={() => void deletePromotion(promotion)}>Delete</button></div>
                       </li>
                     ))}
                     {!promotions.some((promotion) => promotion.restaurant_id === restaurant.id) && <li className="form-help">No promo codes.</li>}
                   </ul>
-                </section>
+                </section>}
               </article>
             ))}
           </div>
         </section>
             )}
-            {selectedStage !== "manage" && (
+            {!selectedStage.startsWith("manage-") && (
               <>
         <div className="flex items-center justify-between gap-3 mb-5">
           <button type="button" className="btn btn-secondary shrink-0" disabled={loading || refreshing || pending !== null || pendingRestaurant !== null} onClick={requestRefresh}>{refreshing ? "Refreshing…" : "Refresh orders"}</button>

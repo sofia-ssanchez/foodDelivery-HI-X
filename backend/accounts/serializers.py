@@ -64,6 +64,7 @@ class SignupSerializer(serializers.ModelSerializer):
             Restaurant.objects.create(
                 name=restaurant_name,
                 address=location["address"],
+                details_locked=True,
                 owner=user,
                 latitude=location["latitude"],
                 longitude=location["longitude"],

@@ -11,6 +11,7 @@ class Restaurant(models.Model) :
 
     name = models.CharField(max_length=150)
     address = models.CharField(max_length=300, blank=True, default="")
+    details_locked = models.BooleanField(default=False)
 
     status = models.CharField(
         max_length=10,
