@@ -11,8 +11,8 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         db = settings.DATABASES['default']
-        if not settings.DEBUG or db['ENGINE'] != 'django.db.backends.sqlite3':
-            raise CommandError('Demo setup requires DEBUG and a local SQLite database.')
+        if not (settings.DEBUG or settings.DEMO_MODE) or db['ENGINE'] != 'django.db.backends.sqlite3':
+            raise CommandError('Demo setup requires demo mode and a local SQLite database.')
         backup = Path('/tmp') / f'foodDelivery-before-demo-{datetime.now():%Y%m%d-%H%M%S}.sqlite3'
         with sqlite3.connect(db['NAME']) as source, sqlite3.connect(backup) as target:
             source.backup(target)

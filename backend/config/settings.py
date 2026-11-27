@@ -24,11 +24,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get(
     "DJANGO_SECRET_KEY",
-    'django-insecure-r%k3^xlj&6x)f6@+b%5uo64#blarnda0h%p5tro%y0x&@c3==^',
+    "demo-platform-local-development-key",
 )
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DJANGO_DEBUG", "true").lower() in {"1", "true", "yes", "on"}
+DEMO_MODE = os.environ.get("DJANGO_DEMO_MODE", "false").lower() in {"1", "true", "yes", "on"}
 
 ALLOWED_HOSTS = [
     host.strip()
@@ -159,10 +160,21 @@ MAILERS = {
 }
 
 CORS_ALLOWED_ORIGINS = [
-    f"http://localhost:{port}" for port in range(3000, 3008)
+    origin.strip()
+    for origin in os.environ.get(
+        "DJANGO_CORS_ALLOWED_ORIGINS",
+        ",".join(f"http://localhost:{port}" for port in range(3000, 3008)),
+    ).split(",")
+    if origin.strip()
 ]
 
-CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS.copy()
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",")
+    if origin.strip()
+]
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+USE_X_FORWARDED_HOST = True
 
 CORS_ALLOW_CREDENTIALS = True
 
