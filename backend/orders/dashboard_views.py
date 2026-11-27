@@ -1,20 +1,26 @@
 """Read-only data views for the customer, restaurant, and operator dashboards."""
 
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.db.models import Count
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from delivery.models import Courier, DeliveryAssignment
 
 from guards.permissions import RequireAuth, RequireCustomer, RequireOperator, RequireRestaurantUser
 from .commands import CreateMenuItemCommand, UpdateMenuItemCommand
+from .address_lookup import read_restaurant_address
 from .models import MenuItem, Order, Restaurant
 from .serializers import (
     CustomerOrderSerializer,
     MenuItemSerializer,
     MenuItemWriteSerializer,
     RestaurantOrderSerializer,
+    RestaurantCreateSerializer,
+    RestaurantDetailsUpdateSerializer,
     RestaurantSerializer,
 )
 
@@ -31,10 +37,37 @@ class CustomerOrderListView(generics.ListAPIView):
 
 
 
-class RestaurantListView(generics.ListAPIView):
+class RestaurantListView(generics.ListCreateAPIView):
     queryset = Restaurant.objects.all()
     serializer_class = RestaurantSerializer
     permission_classes = [RequireAuth]
+
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [RequireRestaurantUser()]
+        return [RequireAuth()]
+
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return RestaurantCreateSerializer
+        return RestaurantSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        location = read_restaurant_address(serializer.validated_data["address_token"])
+        restaurant = Restaurant.objects.create(
+            name=serializer.validated_data["name"],
+            address=location["address"],
+            details_locked=True,
+            owner=request.user,
+            latitude=location["latitude"],
+            longitude=location["longitude"],
+        )
+        return Response(
+            RestaurantSerializer(restaurant).data,
+            status=status.HTTP_201_CREATED,
+        )
 
 
 
@@ -118,6 +151,30 @@ class RestaurantPauseActivityView(generics.GenericAPIView):
         return Response(self.get_serializer(restaurant).data)
 
 
+class RestaurantAddressView(APIView):
+    permission_classes = [RequireRestaurantUser]
+
+    @transaction.atomic
+    def post(self, request, restaurant_id):
+        restaurant = get_object_or_404(Restaurant.objects.select_for_update(), pk=restaurant_id, owner=request.user)
+        if restaurant.details_locked:
+            return Response({"detail": "Restaurant name and address are locked."}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = RestaurantDetailsUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        address_token = serializer.validated_data.get("address_token", "")
+        if address_token:
+            location = read_restaurant_address(address_token)
+            restaurant.address = location["address"]
+            restaurant.latitude = location["latitude"]
+            restaurant.longitude = location["longitude"]
+        elif not restaurant.address:
+            return Response({"detail": "Find and select a restaurant address."}, status=status.HTTP_400_BAD_REQUEST)
+        restaurant.name = serializer.validated_data["name"]
+        restaurant.details_locked = True
+        restaurant.save(update_fields=["name", "address", "latitude", "longitude", "details_locked"])
+        return Response(RestaurantSerializer(restaurant).data)
+
+
 class RestaurantOrderBoardView(generics.GenericAPIView):
     permission_classes = [RequireRestaurantUser]
     serializer_class = RestaurantOrderSerializer
@@ -153,5 +210,52 @@ class OperatorOverviewView(APIView):
             "restaurants_by_status": restaurant_counts,
             "orders_by_status": order_counts,
             "updated_at": timezone.now(),
+        })
+
+
+class OperatorRestaurantActivityView(APIView):
+    permission_classes = [RequireOperator]
+
+    @transaction.atomic
+    def post(self, request, pk):
+        restaurant = get_object_or_404(Restaurant.objects.select_for_update(), pk=pk)
+        if restaurant.status == Restaurant.Status.OPEN:
+            restaurant.status = Restaurant.Status.PAUSED
+        else:
+            restaurant.status = Restaurant.Status.OPEN
+        restaurant.save(update_fields=["status"])
+        return Response(RestaurantSerializer(restaurant).data)
+
+
+class OperatorOperationsView(APIView):
+    permission_classes = [RequireOperator]
+
+    def get(self, request):
+        restaurants = Restaurant.objects.order_by("name", "id")
+        available_couriers = Courier.objects.select_related("user").filter(
+            status=Courier.Status.IDLE,
+            user__is_active=True,
+            user__role="courier",
+        ).exclude(
+            assignments__status__in=(DeliveryAssignment.Status.OFFERED, DeliveryAssignment.Status.ACCEPTED)
+        ).order_by("user__username")
+        assignments = DeliveryAssignment.objects.filter(
+            status=DeliveryAssignment.Status.ACCEPTED,
+            picked_up_at__isnull=True,
+            order__status=Order.Status.READY,
+            courier__status=Courier.Status.OFFLINE,
+        ).select_related("order__restaurant", "order__customer", "courier__user").prefetch_related("order__lines__menu_item").order_by("order__created_at", "order_id")
+        return Response({
+            "restaurants": RestaurantSerializer(restaurants, many=True).data,
+            "available_couriers": [{"id": courier.pk, "username": courier.user.username} for courier in available_couriers],
+            "offline_assignments": [{
+                "assignment_id": assignment.pk,
+                "order_id": assignment.order_id,
+                "restaurant_name": assignment.order.restaurant.name,
+                "customer_name": assignment.order.customer.username,
+                "courier_name": assignment.courier.user.username,
+                "created_at": assignment.order.created_at,
+                "items": [{"name": line.menu_item.name, "quantity": line.quantity} for line in assignment.order.lines.all()],
+            } for assignment in assignments],
         })
 

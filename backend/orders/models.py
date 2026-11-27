@@ -10,6 +10,8 @@ class Restaurant(models.Model) :
         CLOSED = 'closed', 'Closed'
 
     name = models.CharField(max_length=150)
+    address = models.CharField(max_length=300, blank=True, default="")
+    details_locked = models.BooleanField(default=False)
 
     status = models.CharField(
         max_length=10,
@@ -114,6 +116,8 @@ class Order(models.Model) :
         choices=Status.choices,
         default=Status.PLACED,
     )
+
+    rejection_reason = models.CharField(max_length=500, blank=True, default="")
 
     delivery_address = models.CharField(max_length=600, blank=True)
     delivery_unit = models.CharField(max_length=80, blank=True)

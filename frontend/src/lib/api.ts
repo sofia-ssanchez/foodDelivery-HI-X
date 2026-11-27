@@ -1,6 +1,7 @@
 import { demoFetch } from "./demo-toasts";
 
-export const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "";
+const LOCAL_DEV_API_BASE = process.env.NODE_ENV === "development" ? "http://localhost:8000" : "";
+export const API_BASE = process.env.NEXT_PUBLIC_API_BASE || LOCAL_DEV_API_BASE;
 
 let refreshRequest: Promise<void> | null = null;
 let refreshGeneration = 0;
@@ -29,8 +30,10 @@ async function refreshSession(): Promise<void> {
 /** Send an authenticated request and retry once after refreshing on a 401. */
 export async function apiFetch(url: string, init: RequestInit = {}): Promise<Response> {
   if (loggingOut) throw new Error("Logging out.");
-  const target = new URL(url, typeof window === "undefined" ? "http://localhost" : window.location.origin);
-  if (typeof window !== "undefined" && target.origin !== window.location.origin) {
+  const browserOrigin = typeof window === "undefined" ? "http://localhost" : window.location.origin;
+  const apiOrigin = API_BASE ? new URL(API_BASE, browserOrigin).origin : browserOrigin;
+  const target = new URL(url, API_BASE || browserOrigin);
+  if (typeof window !== "undefined" && target.origin !== apiOrigin) {
     throw new Error("Authenticated requests must use the API origin.");
   }
   const generation = refreshGeneration;

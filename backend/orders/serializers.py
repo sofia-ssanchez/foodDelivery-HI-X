@@ -11,11 +11,23 @@ class RestaurantSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "name",
+            "address",
+            "details_locked",
             "status",
             "latitude",
             "longitude",
         ]
         read_only_fields = fields
+
+
+class RestaurantCreateSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=150)
+    address_token = serializers.CharField(max_length=3000)
+
+
+class RestaurantDetailsUpdateSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=150)
+    address_token = serializers.CharField(max_length=3000, required=False, allow_blank=True)
 
 class MenuItemSerializer(serializers.ModelSerializer):
     class Meta:
@@ -88,7 +100,7 @@ class RestaurantOrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ["id", "restaurant_id", "restaurant_name", "customer_name", "status", "created_at", "picked_up_at", "delivered_at", "lines", "total"]
+        fields = ["id", "restaurant_id", "restaurant_name", "customer_name", "status", "rejection_reason", "created_at", "picked_up_at", "delivered_at", "lines", "total"]
 
 
 class CustomerOrderSerializer(RestaurantOrderSerializer):
@@ -113,6 +125,15 @@ class CustomerOrderSerializer(RestaurantOrderSerializer):
 class OrderStatusSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=list(RESTAURANT_ORDER_COMMANDS))
     expected_status = serializers.ChoiceField(choices=Order.Status.choices)
+    rejection_reason = serializers.CharField(max_length=500, required=False, allow_blank=True)
+
+    def validate(self, attrs):
+        if attrs["status"] == Order.Status.REJECTED:
+            reason = attrs.get("rejection_reason", "").strip()
+            if not reason:
+                raise serializers.ValidationError({"rejection_reason": "Enter a reason for declining this order."})
+            attrs["rejection_reason"] = reason
+        return attrs
 
 
 class OperatorCancelOrderSerializer(serializers.Serializer):
