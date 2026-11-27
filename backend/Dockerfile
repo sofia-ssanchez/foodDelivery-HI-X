@@ -12,4 +12,4 @@ COPY . ./
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "python manage.py migrate && python manage.py seed_data && touch /app/.demo-enabled && python manage.py runserver 0.0.0.0:8000"]
+CMD ["sh", "-c", "python manage.py migrate && if [ ! -f /data/.seeded ]; then python manage.py setup_demo && touch /data/.seeded; fi && gunicorn config.wsgi:application --bind 0.0.0.0:8000"]

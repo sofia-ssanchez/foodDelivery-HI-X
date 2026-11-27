@@ -1,0 +1,67 @@
+x-demo:
+  web: web
+  port: 80
+
+services:
+  web:
+    image: ghcr.io/sofia-ssanchez/fooddelivery-hi-x-web:placeholder
+    depends_on:
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  frontend:
+    image: ghcr.io/sofia-ssanchez/fooddelivery-hi-x-frontend:placeholder
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  backend:
+    image: ghcr.io/sofia-ssanchez/fooddelivery-hi-x-backend:placeholder
+    environment:
+      DJANGO_SECRET_KEY: demo-platform-key-not-a-secret
+      DJANGO_DEBUG: "false"
+      DJANGO_DEMO_MODE: "true"
+      DJANGO_ALLOWED_HOSTS: "*"
+      DJANGO_CORS_ALLOWED_ORIGINS: ""
+      DJANGO_CSRF_TRUSTED_ORIGINS: ""
+      SQLITE_PATH: /data/db.sqlite3
+    volumes:
+      - sqlite_data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/admin/login/', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  dispatch_worker:
+    image: ghcr.io/sofia-ssanchez/fooddelivery-hi-x-backend:placeholder
+    command: ["python", "manage.py", "check_stalled_orders", "--loop", "--interval", "30"]
+    environment:
+      DJANGO_SECRET_KEY: demo-platform-key-not-a-secret
+      DJANGO_DEBUG: "false"
+      DJANGO_DEMO_MODE: "true"
+      SQLITE_PATH: /data/db.sqlite3
+    volumes:
+      - sqlite_data:/data
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import sys; sys.exit(0 if b'check_stalled_orders' in open('/proc/1/cmdline','rb').read() else 1)\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  sqlite_data:

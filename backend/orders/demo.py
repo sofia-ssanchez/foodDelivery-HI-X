@@ -15,7 +15,7 @@ from pricing.services import record_order_ledger
 
 
 def demo_enabled():
-    return settings.DEBUG and (settings.BASE_DIR / '.demo-enabled').exists()
+    return settings.DEMO_MODE or (settings.DEBUG and (settings.BASE_DIR / '.demo-enabled').exists())
 
 
 @transaction.atomic
