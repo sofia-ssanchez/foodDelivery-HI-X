@@ -15,6 +15,7 @@ from .serializers import (
     MenuItemSerializer,
     MenuItemWriteSerializer,
     RestaurantOrderSerializer,
+    RestaurantCreateSerializer,
     RestaurantSerializer,
 )
 
@@ -31,10 +32,34 @@ class CustomerOrderListView(generics.ListAPIView):
 
 
 
-class RestaurantListView(generics.ListAPIView):
+class RestaurantListView(generics.ListCreateAPIView):
     queryset = Restaurant.objects.all()
     serializer_class = RestaurantSerializer
     permission_classes = [RequireAuth]
+
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [RequireRestaurantUser()]
+        return [RequireAuth()]
+
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return RestaurantCreateSerializer
+        return RestaurantSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        restaurant = Restaurant.objects.create(
+            name=serializer.validated_data["name"],
+            owner=request.user,
+            latitude="45.501700",
+            longitude="-73.567300",
+        )
+        return Response(
+            RestaurantSerializer(restaurant).data,
+            status=status.HTTP_201_CREATED,
+        )
 
 
 

@@ -17,6 +17,10 @@ class RestaurantSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
+
+class RestaurantCreateSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=150)
+
 class MenuItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = MenuItem

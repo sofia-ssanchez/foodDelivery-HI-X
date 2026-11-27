@@ -42,6 +42,8 @@ export default function RestaurantDashboard() {
   const [selectedStage, setSelectedStage] = useState("all");
   const [orders, setOrders] = useState<Order[]>([]);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const [restaurantName, setRestaurantName] = useState("");
+  const [creatingRestaurant, setCreatingRestaurant] = useState(false);
   const [menuItems, setMenuItems] = useState<Record<number, MenuItem[]>>({});
   const [newMenuDrafts, setNewMenuDrafts] = useState<Record<number, { name: string; price: string }>>({});
   const [pendingMenu, setPendingMenu] = useState<string | null>(null);
@@ -147,6 +149,33 @@ export default function RestaurantDashboard() {
     } finally {
       busy.current = false;
       setPendingRestaurant(null);
+    }
+  }
+
+  async function createRestaurant(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy.current) return;
+    busy.current = true;
+    setCreatingRestaurant(true);
+    setError("");
+    setNotice("");
+    try {
+      const response = await apiFetch("/api/restaurants/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: restaurantName.trim() }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || data.name?.[0] || "Could not create your restaurant.");
+      setRestaurants((current) => [...current, data]);
+      setMenuItems((current) => ({ ...current, [data.id]: [] }));
+      setRestaurantName("");
+      setNotice(`${data.name} created. Add your menu items below.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not create your restaurant.");
+    } finally {
+      busy.current = false;
+      setCreatingRestaurant(false);
     }
   }
 
@@ -261,12 +290,21 @@ export default function RestaurantDashboard() {
                 </button>
               </div>
             ))}
+            {restaurants.length > 0 && <a className="btn btn-primary" href="#menu-management">Manage menu</a>}
           </div>
         </header>
 
-        <section className="mb-8 rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)]/80 p-5" aria-labelledby="menu-management-heading">
+        <section id="menu-management" className="mb-8 rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)]/80 p-5" aria-labelledby="menu-management-heading">
           <h2 id="menu-management-heading" className="text-xl font-bold text-[var(--color-forest)]">Manage menus</h2>
           <p className="form-help mt-1 mb-5">Add items, update prices, and mark items available or sold out.</p>
+          {loaded && !restaurants.length && (
+            <form className="mb-5 flex flex-wrap items-end gap-3" onSubmit={(event) => void createRestaurant(event)}>
+              <label className="form-label min-w-64 flex-1">Restaurant name
+                <input className="form-input mt-1" required maxLength={150} value={restaurantName} onChange={(event) => setRestaurantName(event.target.value)} />
+              </label>
+              <button className="btn btn-primary" type="submit" disabled={creatingRestaurant}>{creatingRestaurant ? "Creating…" : "Create restaurant"}</button>
+            </form>
+          )}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
             {restaurants.map((restaurant) => (
               <article key={restaurant.id} className="rounded-2xl border border-[var(--color-border)] p-4">
@@ -323,8 +361,6 @@ export default function RestaurantDashboard() {
         </div>
         {error && <p role="alert" className="message message-error mb-5">{error}</p>}
         {loading && <p role="status" className="body-text mb-5">Loading your orders…</p>}
-        {loaded && !restaurants.length && <p className="message mb-5">No restaurant is linked to your account yet.</p>}
-
           {selectedStage === "map" && <MontrealMap />}
           {loaded && selectedStage !== "map" && <div className={selectedStage === "all" ? "grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-5 items-start" : "grid grid-cols-1 gap-5"}>
             {stages.map((stage, index) => {

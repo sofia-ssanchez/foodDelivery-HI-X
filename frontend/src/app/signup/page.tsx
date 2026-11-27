@@ -10,6 +10,7 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("customer");
+  const [restaurantName, setRestaurantName] = useState("");
   const [message, setMessage] = useState("");
   const [isError, setIsError] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -34,6 +35,7 @@ export default function SignupPage() {
             email,
             password,
             role,
+            ...(role === "restaurant" ? { restaurant_name: restaurantName } : {}),
           }),
         }
       );
@@ -63,6 +65,7 @@ export default function SignupPage() {
       setUsername("");
       setEmail("");
       setPassword("");
+      setRestaurantName("");
       setRole("customer");
     } catch (error) {
       setIsError(true);
@@ -174,6 +177,26 @@ export default function SignupPage() {
                 <option value="courier">Courier</option>
               </select>
             </div>
+
+            {role === "restaurant" && (
+              <div className="form-field">
+                <label className="form-label" htmlFor="restaurant-name">
+                  Restaurant name
+                </label>
+                <input
+                  className="form-input"
+                  id="restaurant-name"
+                  name="restaurant_name"
+                  type="text"
+                  autoComplete="organization"
+                  maxLength={150}
+                  placeholder="Enter your restaurant name"
+                  value={restaurantName}
+                  onChange={(event) => setRestaurantName(event.target.value)}
+                  required
+                />
+              </div>
+            )}
 
             {message && (
               <div
