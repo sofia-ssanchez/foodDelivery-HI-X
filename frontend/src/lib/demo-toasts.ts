@@ -39,13 +39,17 @@ export function clearToasts() { update([]); }
 /** Demo-only response reporting; clone bodies so callers can still consume them. */
 export async function demoFetch(input: string | URL, init: RequestInit = {}): Promise<Response> {
   const method = (init.method || "GET").toUpperCase();
-  const path = new URL(input.toString()).pathname;
+  const target = new URL(
+    input.toString(),
+    typeof window === "undefined" ? "http://localhost" : window.location.origin,
+  );
+  const path = target.pathname;
   const publish = (status: number | null, label: string, body: string) => {
     update([...toasts, { id: crypto.randomUUID(), method, path, status, label, body: body.slice(0, 12000), expiresAt: Date.now() + 86400000 }].slice(-100));
   };
   let response: Response;
   try {
-    response = await fetch(input, init);
+    response = await fetch(target, init);
   } catch (error) {
     publish(null, "Network error", error instanceof Error ? error.message : "No response received.");
     throw error;
