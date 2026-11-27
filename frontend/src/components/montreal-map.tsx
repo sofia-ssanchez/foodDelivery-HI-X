@@ -142,6 +142,7 @@ export default function MontrealMap() {
             if (!response.ok) throw new Error("Map locations could not be loaded. Refresh or sign in again.");
             const result: MapData = await response.json();
             if (disposed) return;
+            if (!L) return;
             points.clearLayers();
             const coordinates: [number, number][] = [];
             for (const point of result.points) {
